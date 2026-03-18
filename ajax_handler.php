@@ -28,10 +28,43 @@ switch ($action) {
         break;
 
     case 'atualizar_status':
-        if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') { echo json_encode(['erro'=>'Não autorizado']); exit; }
+        if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
+            echo json_encode(['erro' => 'Não autorizado']); exit;
+        }
         $id_pedido = (int) $_POST['id_pedido'];
-        $status = $conn->real_escape_string($_POST['status']);
+        $status    = $conn->real_escape_string($_POST['status']);
+
+        // Buscar status atual para detectar transição → entregue
+        $pedido_atual = $conn->query("SELECT status FROM pedidos WHERE id=$id_pedido")->fetch_assoc();
+
         $conn->query("UPDATE pedidos SET status='$status' WHERE id=$id_pedido");
+
+        // Baixar estoque automaticamente ao marcar como entregue/retirado
+        if ($status === 'entregue' && $pedido_atual && $pedido_atual['status'] !== 'entregue') {
+            $itens_pedido = $conn->query("SELECT id_produto, quantidade FROM pedido_itens WHERE id_pedido=$id_pedido")->fetch_all(MYSQLI_ASSOC);
+            $id_admin = $_SESSION['id_usuario'] ?? null;
+
+            foreach ($itens_pedido as $it) {
+                $id_prod = (int)$it['id_produto'];
+                $qtd     = (int)$it['quantidade'];
+                $prod    = $conn->query("SELECT estoque_atual FROM produtos WHERE id=$id_prod")->fetch_assoc();
+
+                if ($prod) {
+                    $antes  = (int)$prod['estoque_atual'];
+                    $depois = max(0, $antes - $qtd);
+                    $conn->query("UPDATE produtos SET estoque_atual=$depois WHERE id=$id_prod");
+                    if ($depois === 0) $conn->query("UPDATE produtos SET disponivel=0 WHERE id=$id_prod");
+
+                    // Registrar movimentação
+                    $motivo = "Baixa automática – Pedido #$id_pedido";
+                    $tipo_baixa = 'saida';
+                    $stmt = $conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_pedido,id_usuario) VALUES (?,?,?,?,?,?,?,?)");
+                    $stmt->bind_param("isiissii", $id_prod, $tipo_baixa, $qtd, $antes, $depois, $motivo, $id_pedido, $id_admin);
+                    $stmt->execute();
+                }
+            }
+        }
+
         echo json_encode(['sucesso' => true, 'mensagem' => 'Status atualizado!']);
         break;
 
@@ -89,5 +122,18 @@ switch ($action) {
 
     default:
         echo json_encode(['erro' => 'Ação não reconhecida']);
+}
+
+// ---- ESTOQUE: alerta para o painel admin ----
+// action=alertas_estoque
+if ($action === 'alertas_estoque') {
+    if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
+        echo json_encode(['erro' => 'Não autorizado']); exit;
+    }
+    $zerados = $conn->query("SELECT COUNT(*) as t FROM produtos WHERE estoque_atual = 0")->fetch_assoc()['t'];
+    $baixos  = $conn->query("SELECT COUNT(*) as t FROM produtos WHERE estoque_atual > 0 AND estoque_atual <= estoque_minimo")->fetch_assoc()['t'];
+    $criticos = $conn->query("SELECT id, nome, estoque_atual, estoque_minimo FROM produtos WHERE estoque_atual <= estoque_minimo ORDER BY estoque_atual ASC LIMIT 10")->fetch_all(MYSQLI_ASSOC);
+    echo json_encode(['zerados' => $zerados, 'baixos' => $baixos, 'criticos' => $criticos]);
+    exit;
 }
 ?>

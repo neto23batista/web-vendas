@@ -55,6 +55,10 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             </div>
             <div class="nav-buttons">
                 <a href="gerenciar_produtos.php" class="btn btn-success"><i class="fas fa-boxes"></i> Produtos</a>
+                <a href="estoque.php" class="btn btn-primary" id="btn-estoque" style="position:relative;">
+                    <i class="fas fa-boxes-stacked"></i> Estoque
+                    <span id="estoque-alert-badge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--danger);color:white;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;"></span>
+                </a>
                 <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning" onclick="return confirm('Limpar pedidos finalizados?')"><i class="fas fa-trash-alt"></i> Limpar</a>
                 <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i> Loja</a>
                 <a href="logout.php" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i></a>
@@ -67,6 +71,9 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             <h1><i class="fas fa-tachometer-alt" style="color:var(--primary);"></i> Painel Administrativo</h1>
             <p style="color:var(--gray);">Bem-vindo, <?= htmlspecialchars($_SESSION['usuario']) ?>!</p>
         </div>
+
+        <!-- ALERTA DE ESTOQUE (atualizado por AJAX) -->
+        <div id="estoque-alert-banner" style="display:none;"></div>
 
         <?php if (isset($_SESSION['sucesso'])): ?>
             <div class="alert alert-success"><i class="fas fa-check-circle"></i> <?= $_SESSION['sucesso'] ?></div>
@@ -276,8 +283,49 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
 
         if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
-        setInterval(() => { atualizarPedidos(); atualizarStats(); }, 30000);
-        setTimeout(() => { atualizarPedidos(); atualizarStats(); }, 1000);
+        // ---- ALERTAS DE ESTOQUE ----
+        async function verificarEstoque() {
+            try {
+                const data = await (await fetch('ajax_handler.php?action=alertas_estoque')).json();
+                const banner = document.getElementById('estoque-alert-banner');
+                const badge  = document.getElementById('estoque-alert-badge');
+                const total  = (data.zerados || 0) + (data.baixos || 0);
+
+                if (total > 0) {
+                    // Badge no botão
+                    badge.textContent    = total;
+                    badge.style.display  = 'flex';
+
+                    // Banner com lista dos críticos
+                    let itensHtml = '';
+                    (data.criticos || []).forEach(p => {
+                        const cor = p.estoque_atual === 0 ? '#dc2626' : '#d97706';
+                        itensHtml += `<span style="background:${cor}22;color:${cor};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;">${p.nome}: ${p.estoque_atual} un</span>`;
+                    });
+
+                    banner.style.display = 'block';
+                    banner.innerHTML = `
+                        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px;">
+                            <i class="fas fa-triangle-exclamation" style="font-size:22px;color:#d97706;flex-shrink:0;margin-top:2px;"></i>
+                            <div style="flex:1;">
+                                <strong style="color:#92400e;display:block;margin-bottom:8px;">
+                                    ⚠️ Estoque crítico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mínimo
+                                </strong>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">${itensHtml}</div>
+                            </div>
+                            <a href="estoque.php" class="btn btn-warning" style="padding:8px 16px;font-size:13px;flex-shrink:0;">
+                                <i class="fas fa-boxes-stacked"></i> Gerenciar Estoque
+                            </a>
+                        </div>`;
+                } else {
+                    banner.style.display = 'none';
+                    badge.style.display  = 'none';
+                }
+            } catch(e) { console.error('Erro ao verificar estoque:', e); }
+        }
+
+        setInterval(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 30000);
+        setTimeout(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 1000);
     </script>
 </body>
 </html>
