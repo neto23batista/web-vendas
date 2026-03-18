@@ -120,6 +120,21 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                         </div>
                                     <?php endif; ?>
                                     <div class="pedido-numero">Pedido #<?= $pedido['id'] ?></div>
+                                    <?php $is_delivery = strpos($pedido['observacoes'] ?? '', 'DELIVERY') !== false; ?>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                                    <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;<?= $is_delivery ? 'background:#e6f0ff;color:#0052cc;' : 'background:#e3fcef;color:#006644;' ?>">
+                                        <i class="fas fa-<?= $is_delivery ? 'motorcycle' : 'store-alt' ?>"></i>
+                                        <?= $is_delivery ? 'Delivery' : 'Retirada no Local' ?>
+                                    </span>
+                                    <?php if (($pedido['forma_pagamento'] ?? '') === 'app'): ?>
+                                        <?php
+                                        $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em análise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
+                                        $pg = $pg_cores[$pedido['pagamento_status'] ?? 'pendente'] ?? $pg_cores['pendente'];
+                                        ?>
+                                        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:<?= $pg[0] ?>1a;color:<?= $pg[0] ?>;">
+                                            <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> · MP
+                                        </span>
+                                    <?php endif; ?></div>
                                     <div class="pedido-info">
                                         <strong><i class="fas fa-user"></i></strong> <?= htmlspecialchars($pedido['cliente_nome']) ?><br>
                                         <?php if ($pedido['telefone']): ?><strong><i class="fas fa-phone"></i></strong> <?= htmlspecialchars($pedido['telefone']) ?><br><?php endif; ?>
@@ -145,11 +160,16 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 </div>
 
                                 <div class="status-form">
+                                    <?php $is_delivery = strpos($pedido['observacoes'] ?? '', 'DELIVERY') !== false; ?>
                                     <select id="status-<?= $pedido['id'] ?>" onchange="atualizarStatus(<?= $pedido['id'] ?>, this.value)">
                                         <option value="pendente"   <?= $pedido['status']=='pendente'   ? 'selected' : '' ?>>Aguardando</option>
                                         <option value="preparando" <?= $pedido['status']=='preparando' ? 'selected' : '' ?>>Separando</option>
-                                        <option value="pronto"     <?= $pedido['status']=='pronto'     ? 'selected' : '' ?>>Pronto</option>
-                                        <option value="entregue"   <?= $pedido['status']=='entregue'   ? 'selected' : '' ?>>Entregue</option>
+                                        <option value="pronto"     <?= $pedido['status']=='pronto'     ? 'selected' : '' ?>><?= $is_delivery ? 'Saiu para entrega' : 'Pronto p/ Retirada' ?></option>
+                                        <?php if ($is_delivery): ?>
+                                            <option value="entregue" <?= $pedido['status']=='entregue' ? 'selected' : '' ?>>Entregue</option>
+                                        <?php else: ?>
+                                            <option value="entregue" <?= $pedido['status']=='entregue' ? 'selected' : '' ?>>Retirado</option>
+                                        <?php endif; ?>
                                         <option value="cancelado"  <?= $pedido['status']=='cancelado'  ? 'selected' : '' ?>>Cancelado</option>
                                     </select>
                                     <a href="imprimir_pedido.php?id=<?= $pedido['id'] ?>" target="_blank" class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
@@ -207,7 +227,8 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 let html = ''; let novosPedidos = false;
 
                 data.pedidos.forEach(pedido => {
-                    const isNovo = !pedidosAtuais.has(pedido.id);
+                    const isNovo     = !pedidosAtuais.has(pedido.id);
+                    const isDelivery = pedido.observacoes && pedido.observacoes.includes('DELIVERY');
                     if (isNovo) { novosPedidos = true; pedidosAtuais.add(pedido.id); }
 
                     let itensHtml = '';
@@ -219,7 +240,12 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                         <div class="pedido-header">
                             <div style="flex:1;">
                                 ${pedido.conta_solicitada==1?`<div style="background:var(--warning);color:#fff;padding:7px 14px;border-radius:var(--radius-full);margin-bottom:10px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:13px;"><i class="fas fa-cash-register"></i> CLIENTE QUER PAGAR!</div>`:''}
-                                <div class="pedido-numero">Pedido #${pedido.id}</div>
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                    <div class="pedido-numero" style="margin-bottom:0;">Pedido #${pedido.id}</div>
+                                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;${isDelivery?'background:#e6f0ff;color:#0052cc;':'background:#e3fcef;color:#006644;'}">
+                                        ${isDelivery?'<i class="fas fa-motorcycle"></i> Delivery':'<i class="fas fa-store-alt"></i> Retirada'}
+                                    </span>
+                                </div>
                                 <div class="pedido-info">
                                     <strong><i class="fas fa-user"></i></strong> ${pedido.cliente_nome}<br>
                                     ${pedido.telefone?`<strong><i class="fas fa-phone"></i></strong> ${pedido.telefone}<br>`:''}
@@ -233,8 +259,8 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 <select id="status-${pedido.id}" onchange="atualizarStatus(${pedido.id}, this.value)">
                                     <option value="pendente"   ${pedido.status==='pendente'  ?'selected':''}>Aguardando</option>
                                     <option value="preparando" ${pedido.status==='preparando'?'selected':''}>Separando</option>
-                                    <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>Pronto</option>
-                                    <option value="entregue"   ${pedido.status==='entregue'  ?'selected':''}>Entregue</option>
+                                    <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>${isDelivery ? 'Saiu para entrega' : 'Pronto p/ Retirada'}</option>
+                                    <option value="entregue"   ${pedido.status==='entregue'  ?'selected':''}>${isDelivery ? 'Entregue' : 'Retirado'}</option>
                                     <option value="cancelado"  ${pedido.status==='cancelado' ?'selected':''}>Cancelado</option>
                                 </select>
                                 <a href="imprimir_pedido.php?id=${pedido.id}" target="_blank" class="btn btn-primary" style="padding:10px 18px;text-decoration:none;"><i class="fas fa-print"></i> Nota</a>

@@ -67,15 +67,25 @@ if (isset($_GET['limpar'])) {
 
 // FINALIZAR PEDIDO
 if (isset($_POST['finalizar_pedido'])) {
-    $observacoes  = sanitizar_texto($_POST['observacoes'] ?? '');
-    $tipo_retirada = $_POST['tipo_retirada'] ?? 'balcao';
-    $numero_mesa  = '';
+    $observacoes    = sanitizar_texto($_POST['observacoes'] ?? '');
+    $tipo_retirada  = $_POST['tipo_retirada'] ?? 'balcao';
+    $forma_pagamento = sanitizar_texto($_POST['forma_pagamento'] ?? 'presencial');
+    $numero_mesa    = '';
 
-    if ($tipo_retirada == 'mesa') {
-        $numero_mesa = sanitizar_texto($_POST['numero_mesa'] ?? '');
-        if (empty($numero_mesa)) {
-            redirecionar('carrinho.php', 'Por favor, informe o número do guichê!', 'erro');
+    // Labels legíveis para salvar no pedido
+    $label_retirada  = $tipo_retirada === 'delivery' ? 'Delivery' : 'Retirada no Local';
+    $label_pagamento = $forma_pagamento === 'app' ? 'Pagamento pelo App' : ($tipo_retirada === 'delivery' ? 'Pagar na Entrega' : 'Pagar na Retirada');
+
+    if ($tipo_retirada == 'delivery') {
+        $endereco_entrega = sanitizar_texto($_POST['endereco_entrega'] ?? '');
+        if (empty($endereco_entrega)) {
+            redirecionar('carrinho.php', 'Por favor, informe o endereço de entrega!', 'erro');
         }
+        $prefixo = "📦 DELIVERY – Endereço: $endereco_entrega | 💳 $label_pagamento";
+        $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
+    } else {
+        $prefixo = "🏪 RETIRADA NO LOCAL | 💳 $label_pagamento";
+        $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
     }
 
     $itens = $conn->query("SELECT c.*, p.nome, p.preco FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id_cliente = $id_cliente AND p.disponivel = 1")->fetch_all(MYSQLI_ASSOC);
@@ -85,8 +95,9 @@ if (isset($_POST['finalizar_pedido'])) {
     $total = 0;
     foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; }
 
-    $stmt = $conn->prepare("INSERT INTO pedidos (id_cliente, total, observacoes, numero_mesa, tipo_retirada) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("idsss", $id_cliente, $total, $observacoes, $numero_mesa, $tipo_retirada);
+    $pg_status_inicial = $forma_pagamento === 'app' ? 'pendente' : 'aprovado';
+    $stmt = $conn->prepare("INSERT INTO pedidos (id_cliente, total, observacoes, numero_mesa, tipo_retirada, forma_pagamento, pagamento_status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("idsssss", $id_cliente, $total, $observacoes, $numero_mesa, $tipo_retirada, $forma_pagamento, $pg_status_inicial);
     $stmt->execute();
     $id_pedido = $conn->insert_id;
 
@@ -97,7 +108,17 @@ if (isset($_POST['finalizar_pedido'])) {
     }
 
     $conn->query("DELETE FROM carrinho WHERE id_cliente=$id_cliente");
-    redirecionar('painel_cliente.php', "Pedido #$id_pedido realizado! Aguarde a confirmação do farmacêutico.");
+
+    // Se pagamento pelo app → criar preferência no Mercado Pago
+    if ($forma_pagamento === 'app') {
+        header("Location: criar_preferencia.php?pedido=$id_pedido");
+        exit;
+    }
+
+    $msg_pedido = $tipo_retirada == 'delivery'
+        ? "Pedido #$id_pedido confirmado! Em breve seu delivery será enviado."
+        : "Pedido #$id_pedido confirmado! Retire no balcão quando estiver pronto.";
+    redirecionar('painel_cliente.php', $msg_pedido);
 }
 
 $itens = $conn->query("SELECT c.*, p.nome, p.descricao, p.preco, p.imagem, p.categoria FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id_cliente = $id_cliente AND p.disponivel = 1")->fetch_all(MYSQLI_ASSOC);
@@ -129,9 +150,19 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
     </div>
 
     <div class="container">
-        <div class="card" style="background:var(--gradient-main);color:white;margin-bottom:28px;">
-            <h1 style="color:white;margin-bottom:6px;"><i class="fas fa-shopping-bag"></i> Minha Sacola</h1>
-            <p style="opacity:.9;" id="header-itens"><?= $total_itens ?> item(ns) na sacola</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding:20px 24px;background:var(--white);border-radius:var(--radius-lg);border-left:4px solid var(--primary);box-shadow:var(--shadow-sm);">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div style="width:42px;height:42px;background:var(--bg2);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-shopping-bag" style="color:var(--primary);font-size:18px;"></i>
+                </div>
+                <div>
+                    <h1 style="font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:var(--dark);margin:0 0 2px;">Minha Sacola</h1>
+                    <p style="margin:0;font-size:13px;color:var(--gray);" id="header-itens"><?= $total_itens ?> item(ns) na sacola</p>
+                </div>
+            </div>
+            <a href="index.php" style="font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;display:flex;align-items:center;gap:6px;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+                <i class="fas fa-plus"></i> Adicionar mais
+            </a>
         </div>
 
         <?php if (isset($_SESSION['sucesso'])): ?>
@@ -193,32 +224,94 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                     <h3><i class="fas fa-receipt" style="color:var(--primary);"></i> Finalizar Compra</h3>
 
                     <form method="POST" id="checkout-form">
-                        <div style="margin-bottom:18px;">
-                            <label style="display:block;margin-bottom:10px;font-weight:700;color:var(--dark);font-size:14px;">
-                                <i class="fas fa-hand-holding-medical"></i> Como deseja retirar?
+
+                        <!-- OPÇÕES DE ENTREGA -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
+                                <i class="fas fa-truck-medical"></i> Como deseja receber?
                             </label>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+                                <!-- RETIRAR NO LOCAL -->
                                 <label style="cursor:pointer;">
                                     <input type="radio" name="tipo_retirada" value="balcao" checked style="display:none;" id="r-balcao">
-                                    <div class="retirada-opt" id="lbl-balcao" onclick="selecionarRetirada('balcao')" style="padding:16px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);">
-                                        <i class="fas fa-store" style="font-size:22px;color:var(--primary);display:block;margin-bottom:6px;"></i>
-                                        <span style="font-weight:700;font-size:13px;color:var(--dark);">No Balcão</span>
+                                    <div id="lbl-balcao" onclick="selecionarRetirada('balcao')"
+                                         style="padding:18px 12px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);transition:all .25s;cursor:pointer;">
+                                        <i class="fas fa-store-alt" id="icon-balcao" style="font-size:28px;color:var(--primary);display:block;margin-bottom:8px;"></i>
+                                        <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Buscar no Local</span>
+                                        <span style="font-size:11px;color:var(--gray);display:block;margin-top:3px;">Retire na farmácia</span>
                                     </div>
                                 </label>
+
+                                <!-- DELIVERY -->
                                 <label style="cursor:pointer;">
-                                    <input type="radio" name="tipo_retirada" value="mesa" style="display:none;" id="r-mesa">
-                                    <div class="retirada-opt" id="lbl-mesa" onclick="selecionarRetirada('mesa')" style="padding:16px;border:2px solid var(--light-gray);border-radius:var(--radius-md);text-align:center;">
-                                        <i class="fas fa-chair" style="font-size:22px;color:var(--gray-light);display:block;margin-bottom:6px;"></i>
-                                        <span style="font-weight:700;font-size:13px;color:var(--dark);">Na Cadeira</span>
+                                    <input type="radio" name="tipo_retirada" value="delivery" style="display:none;" id="r-delivery">
+                                    <div id="lbl-delivery" onclick="selecionarRetirada('delivery')"
+                                         style="padding:18px 12px;border:2px solid var(--light-gray);border-radius:var(--radius-md);text-align:center;transition:all .25s;cursor:pointer;">
+                                        <i class="fas fa-motorcycle" id="icon-delivery" style="font-size:28px;color:var(--gray-light);display:block;margin-bottom:8px;"></i>
+                                        <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Delivery</span>
+                                        <span style="font-size:11px;color:var(--gray);display:block;margin-top:3px;">Entrega em casa</span>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
-                        <div id="mesa-field" style="display:none;margin-bottom:18px;">
-                            <div class="form-group">
-                                <label><i class="fas fa-hashtag"></i> Número da Cadeira *</label>
-                                <input type="text" name="numero_mesa" id="numero_mesa" placeholder="Ex: 3">
+                        <!-- CAMPO ENDEREÇO (aparece só no delivery) -->
+                        <div id="delivery-field" style="display:none;margin-bottom:18px;animation:fadeUp .3s ease;">
+                            <div style="background:linear-gradient(135deg,#e6f0ff,#f0f7ff);border:1.5px solid #bfdbfe;border-radius:var(--radius-md);padding:16px;">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                                    <i class="fas fa-map-marker-alt" style="color:var(--secondary);font-size:18px;"></i>
+                                    <span style="font-weight:700;color:var(--dark);font-size:14px;">Endereço de Entrega *</span>
+                                </div>
+                                <input type="text" name="endereco_entrega" id="endereco_entrega"
+                                       placeholder="Rua, número, bairro, cidade, CEP"
+                                       style="background:white;border-color:#bfdbfe;">
+                                <p style="font-size:11px;color:var(--gray);margin-top:8px;display:flex;align-items:center;gap:5px;">
+                                    <i class="fas fa-info-circle" style="color:var(--info);"></i>
+                                    Consulte a taxa de entrega com o atendente
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- FORMA DE PAGAMENTO (muda dinamicamente) -->
+                        <div style="margin-bottom:20px;">
+                            <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
+                                <i class="fas fa-wallet"></i> Como deseja pagar?
+                            </label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="pagamento-opcoes">
+
+                                <!-- OPÇÃO 1: muda o label conforme retirada (Na Retirada / Na Entrega) -->
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="forma_pagamento" value="presencial" checked style="display:none;" id="p-presencial">
+                                    <div id="lbl-presencial" onclick="selecionarPagamento('presencial')"
+                                         style="padding:16px 10px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);transition:all .25s;cursor:pointer;">
+                                        <i class="fas fa-money-bill-wave" id="icon-presencial" style="font-size:26px;color:var(--primary);display:block;margin-bottom:7px;"></i>
+                                        <span id="txt-presencial" style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Na Retirada</span>
+                                        <span id="sub-presencial" style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Dinheiro ou cartão</span>
+                                    </div>
+                                </label>
+
+                                <!-- OPÇÃO 2: Pagar pelo App -->
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="forma_pagamento" value="app" style="display:none;" id="p-app">
+                                    <div id="lbl-app" onclick="selecionarPagamento('app')"
+                                         style="padding:16px 10px;border:2px solid var(--light-gray);border-radius:var(--radius-md);text-align:center;transition:all .25s;cursor:pointer;">
+                                        <i class="fas fa-mobile-screen-button" id="icon-app" style="font-size:26px;color:var(--gray-light);display:block;margin-bottom:7px;"></i>
+                                        <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">No Aplicativo</span>
+                                        <span style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Pix, cartão online</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Campo Pix / dados app (aparece ao selecionar app) -->
+                            <div id="app-field" style="display:none;margin-top:12px;animation:fadeUp .3s ease;">
+                                <div style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1.5px solid #c4b5fd;border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;gap:12px;">
+                                    <i class="fas fa-qrcode" style="font-size:28px;color:#7c3aed;flex-shrink:0;"></i>
+                                    <div>
+                                        <strong style="color:#4c1d95;font-size:13px;display:block;">Pagamento pelo App</strong>
+                                        <span style="font-size:12px;color:#6d28d9;">Após confirmar, enviaremos o link de pagamento via WhatsApp ou e-mail.</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -249,7 +342,7 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
 
                     <p style="text-align:center;margin-top:14px;font-size:12px;color:var(--gray);">
                         <i class="fas fa-shield-halved"></i> Compra 100% segura &nbsp;|&nbsp;
-                        <i class="fas fa-credit-card"></i> Pagamento no balcão
+                        <i class="fas fa-credit-card"></i> Pagamento na retirada ou na entrega
                     </p>
                 </div>
             </div>
@@ -260,20 +353,65 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
         let itens = <?= json_encode(array_map(function($i){ return ['id'=>$i['id'],'preco'=>floatval($i['preco']),'quantidade'=>intval($i['quantidade'])]; }, $itens)) ?>;
 
         function selecionarRetirada(tipo) {
-            document.getElementById('r-balcao').checked = (tipo === 'balcao');
-            document.getElementById('r-mesa').checked   = (tipo === 'mesa');
-            const lblBalcao = document.getElementById('lbl-balcao');
-            const lblMesa   = document.getElementById('lbl-mesa');
-            lblBalcao.style.borderColor = tipo === 'balcao' ? 'var(--primary)' : 'var(--light-gray)';
-            lblBalcao.style.background  = tipo === 'balcao' ? 'rgba(0,135,90,.07)' : '';
-            lblBalcao.querySelector('i').style.color = tipo === 'balcao' ? 'var(--primary)' : 'var(--gray-light)';
-            lblMesa.style.borderColor = tipo === 'mesa' ? 'var(--primary)' : 'var(--light-gray)';
-            lblMesa.style.background  = tipo === 'mesa' ? 'rgba(0,135,90,.07)' : '';
-            lblMesa.querySelector('i').style.color = tipo === 'mesa' ? 'var(--primary)' : 'var(--gray-light)';
-            const mesaField = document.getElementById('mesa-field');
-            const numMesa   = document.getElementById('numero_mesa');
-            mesaField.style.display = tipo === 'mesa' ? 'block' : 'none';
-            numMesa.required = (tipo === 'mesa');
+            document.getElementById('r-balcao').checked   = (tipo === 'balcao');
+            document.getElementById('r-delivery').checked = (tipo === 'delivery');
+
+            const lblBalcao   = document.getElementById('lbl-balcao');
+            const lblDelivery = document.getElementById('lbl-delivery');
+            const iconBalcao  = document.getElementById('icon-balcao');
+            const iconDelivery = document.getElementById('icon-delivery');
+
+            // Visual — Balcão
+            const isBalcao = tipo === 'balcao';
+            lblBalcao.style.borderColor = isBalcao ? 'var(--primary)' : 'var(--light-gray)';
+            lblBalcao.style.background  = isBalcao ? 'rgba(0,135,90,.07)' : '';
+            iconBalcao.style.color      = isBalcao ? 'var(--primary)' : 'var(--gray-light)';
+
+            // Visual — Delivery
+            const isDelivery = tipo === 'delivery';
+            lblDelivery.style.borderColor = isDelivery ? 'var(--secondary)' : 'var(--light-gray)';
+            lblDelivery.style.background  = isDelivery ? 'rgba(0,82,204,.07)' : '';
+            iconDelivery.style.color      = isDelivery ? 'var(--secondary)' : 'var(--gray-light)';
+
+            // Campo endereço
+            const deliveryField   = document.getElementById('delivery-field');
+            const enderecoEntrega = document.getElementById('endereco_entrega');
+            deliveryField.style.display = isDelivery ? 'block' : 'none';
+            enderecoEntrega.required    = isDelivery;
+            if (!isDelivery) enderecoEntrega.value = '';
+
+            // Atualizar label do pagamento presencial conforme tipo
+            document.getElementById('txt-presencial').textContent = isDelivery ? 'Na Entrega'  : 'Na Retirada';
+            document.getElementById('sub-presencial').textContent = isDelivery ? 'Pago ao entregador' : 'Dinheiro ou cartão';
+
+            // Reset seleção de pagamento para presencial ao trocar modo
+            selecionarPagamento('presencial');
+        }
+
+        function selecionarPagamento(tipo) {
+            document.getElementById('p-presencial').checked = (tipo === 'presencial');
+            document.getElementById('p-app').checked        = (tipo === 'app');
+
+            const lblPresencial = document.getElementById('lbl-presencial');
+            const lblApp        = document.getElementById('lbl-app');
+            const iconPresencial = document.getElementById('icon-presencial');
+            const iconApp        = document.getElementById('icon-app');
+            const appField       = document.getElementById('app-field');
+
+            // Visual — Presencial
+            const isPres = tipo === 'presencial';
+            lblPresencial.style.borderColor = isPres ? 'var(--primary)' : 'var(--light-gray)';
+            lblPresencial.style.background  = isPres ? 'rgba(0,135,90,.07)' : '';
+            iconPresencial.style.color      = isPres ? 'var(--primary)' : 'var(--gray-light)';
+
+            // Visual — App
+            const isApp = tipo === 'app';
+            lblApp.style.borderColor = isApp ? '#7c3aed' : 'var(--light-gray)';
+            lblApp.style.background  = isApp ? 'rgba(124,58,237,.07)' : '';
+            iconApp.style.color      = isApp ? '#7c3aed' : 'var(--gray-light)';
+
+            // Info box
+            appField.style.display = isApp ? 'block' : 'none';
         }
 
         function formatarPreco(v) { return 'R$ ' + parseFloat(v).toFixed(2).replace('.', ','); }
