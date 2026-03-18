@@ -95,6 +95,14 @@ if (isset($_POST['finalizar_pedido'])) {
     $total = 0;
     foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; }
 
+    // Adicionar taxa de entrega se for delivery
+    $taxa_delivery = 5.00;
+    if ($tipo_retirada === 'delivery') {
+        $total += $taxa_delivery;
+        // Incluir taxa no prefixo de observações
+        $observacoes = str_replace('📦 DELIVERY', '📦 DELIVERY (+R$ 5,00 frete)', $observacoes);
+    }
+
     $pg_status_inicial = $forma_pagamento === 'app' ? 'pendente' : 'aprovado';
     $stmt = $conn->prepare("INSERT INTO pedidos (id_cliente, total, observacoes, numero_mesa, tipo_retirada, forma_pagamento, pagamento_status) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("idsssss", $id_cliente, $total, $observacoes, $numero_mesa, $tipo_retirada, $forma_pagamento, $pg_status_inicial);
@@ -320,8 +328,15 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                                 <span>Subtotal (<span id="qtd-itens"><?= $total_itens ?></span> itens)</span>
                                 <span id="subtotal-geral"><?= formatar_preco($total) ?></span>
                             </div>
-                            <div class="checkout-line">
-                                <span>Taxa de serviço</span>
+                            <div class="checkout-line" id="linha-frete" style="display:none;">
+                                <span style="display:flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-motorcycle" style="color:var(--secondary);font-size:12px;"></i>
+                                    Taxa de entrega
+                                </span>
+                                <span style="color:var(--secondary);font-weight:700;">+ R$ 5,00</span>
+                            </div>
+                            <div class="checkout-line" id="linha-frete-gratis">
+                                <span>Taxa de entrega</span>
                                 <span style="color:var(--success);font-weight:700;">Grátis</span>
                             </div>
                             <div class="checkout-total">
@@ -352,13 +367,16 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
     <script>
         let itens = <?= json_encode(array_map(function($i){ return ['id'=>$i['id'],'preco'=>floatval($i['preco']),'quantidade'=>intval($i['quantidade'])]; }, $itens)) ?>;
 
+        const TAXA_DELIVERY = 5.00;
+        let isDeliveryAtivo = false;
+
         function selecionarRetirada(tipo) {
             document.getElementById('r-balcao').checked   = (tipo === 'balcao');
             document.getElementById('r-delivery').checked = (tipo === 'delivery');
 
-            const lblBalcao   = document.getElementById('lbl-balcao');
-            const lblDelivery = document.getElementById('lbl-delivery');
-            const iconBalcao  = document.getElementById('icon-balcao');
+            const lblBalcao    = document.getElementById('lbl-balcao');
+            const lblDelivery  = document.getElementById('lbl-delivery');
+            const iconBalcao   = document.getElementById('icon-balcao');
             const iconDelivery = document.getElementById('icon-delivery');
 
             // Visual — Balcão
@@ -368,21 +386,28 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
             iconBalcao.style.color      = isBalcao ? 'var(--primary)' : 'var(--gray-light)';
 
             // Visual — Delivery
-            const isDelivery = tipo === 'delivery';
-            lblDelivery.style.borderColor = isDelivery ? 'var(--secondary)' : 'var(--light-gray)';
-            lblDelivery.style.background  = isDelivery ? 'rgba(0,82,204,.07)' : '';
-            iconDelivery.style.color      = isDelivery ? 'var(--secondary)' : 'var(--gray-light)';
+            isDeliveryAtivo = tipo === 'delivery';
+            lblDelivery.style.borderColor = isDeliveryAtivo ? 'var(--secondary)' : 'var(--light-gray)';
+            lblDelivery.style.background  = isDeliveryAtivo ? 'rgba(0,82,204,.07)' : '';
+            iconDelivery.style.color      = isDeliveryAtivo ? 'var(--secondary)' : 'var(--gray-light)';
 
             // Campo endereço
             const deliveryField   = document.getElementById('delivery-field');
             const enderecoEntrega = document.getElementById('endereco_entrega');
-            deliveryField.style.display = isDelivery ? 'block' : 'none';
-            enderecoEntrega.required    = isDelivery;
-            if (!isDelivery) enderecoEntrega.value = '';
+            deliveryField.style.display = isDeliveryAtivo ? 'block' : 'none';
+            enderecoEntrega.required    = isDeliveryAtivo;
+            if (!isDeliveryAtivo) enderecoEntrega.value = '';
+
+            // Mostrar/ocultar linha de frete no resumo
+            document.getElementById('linha-frete').style.display       = isDeliveryAtivo ? 'flex' : 'none';
+            document.getElementById('linha-frete-gratis').style.display = isDeliveryAtivo ? 'none' : 'flex';
 
             // Atualizar label do pagamento presencial conforme tipo
-            document.getElementById('txt-presencial').textContent = isDelivery ? 'Na Entrega'  : 'Na Retirada';
-            document.getElementById('sub-presencial').textContent = isDelivery ? 'Pago ao entregador' : 'Dinheiro ou cartão';
+            document.getElementById('txt-presencial').textContent = isDeliveryAtivo ? 'Na Entrega'       : 'Na Retirada';
+            document.getElementById('sub-presencial').textContent = isDeliveryAtivo ? 'Pago ao entregador' : 'Dinheiro ou cartão';
+
+            // Recalcular total com/sem frete
+            atualizarTotalGeral();
 
             // Reset seleção de pagamento para presencial ao trocar modo
             selecionarPagamento('presencial');
@@ -447,12 +472,14 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
         }
 
         function atualizarTotalGeral() {
-            let total=0, qtd=0;
-            itens.forEach(i=>{ total+=i.preco*i.quantidade; qtd+=i.quantidade; });
-            document.getElementById('subtotal-geral').textContent = formatarPreco(total);
-            document.getElementById('total-geral').textContent = formatarPreco(total);
-            document.getElementById('qtd-itens').textContent = qtd;
-            document.getElementById('header-itens').textContent = qtd + ' item(ns) na sacola';
+            let subtotal = 0, qtd = 0;
+            itens.forEach(i => { subtotal += i.preco * i.quantidade; qtd += i.quantidade; });
+            const frete = isDeliveryAtivo ? TAXA_DELIVERY : 0;
+            const total = subtotal + frete;
+            document.getElementById('subtotal-geral').textContent = formatarPreco(subtotal);
+            document.getElementById('total-geral').textContent    = formatarPreco(total);
+            document.getElementById('qtd-itens').textContent      = qtd;
+            document.getElementById('header-itens').textContent   = qtd + ' item(ns) na sacola';
         }
 
         function removerItem(idCarrinho) {

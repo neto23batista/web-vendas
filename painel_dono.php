@@ -57,7 +57,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 <a href="gerenciar_produtos.php" class="btn btn-success"><i class="fas fa-boxes"></i> Produtos</a>
                 <a href="estoque.php" class="btn btn-primary" id="btn-estoque" style="position:relative;">
                     <i class="fas fa-boxes-stacked"></i> Estoque
-                    <span id="estoque-alert-badge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--danger);color:white;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:800;display:none;align-items:center;justify-content:center;"></span>
+                    <span class="badge-num" id="estoque-alert-badge" style="display:none;background:#f59e0b;"></span>
                 </a>
                 <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning" onclick="return confirm('Limpar pedidos finalizados?')"><i class="fas fa-trash-alt"></i> Limpar</a>
                 <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i> Loja</a>
@@ -283,7 +283,6 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
 
         if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
-        // ---- ALERTAS DE ESTOQUE ----
         async function verificarEstoque() {
             try {
                 const data = await (await fetch('ajax_handler.php?action=alertas_estoque')).json();
@@ -292,9 +291,9 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 const total  = (data.zerados || 0) + (data.baixos || 0);
 
                 if (total > 0) {
-                    // Badge no botão
-                    badge.textContent    = total;
-                    badge.style.display  = 'flex';
+                    // Badge no botão — igual ao carrinho
+                    badge.textContent   = total;
+                    badge.style.display = 'flex';
 
                     // Banner com lista dos críticos
                     let itensHtml = '';
@@ -318,8 +317,8 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                             </a>
                         </div>`;
                 } else {
-                    banner.style.display = 'none';
                     badge.style.display  = 'none';
+                    banner.style.display = 'none';
                 }
             } catch(e) { console.error('Erro ao verificar estoque:', e); }
         }

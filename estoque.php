@@ -7,6 +7,29 @@ verificar_login('dono');
 $id_admin = $_SESSION['id_usuario'];
 
 // ============================================================
+// LIMPEZA AUTOMÁTICA: remove movimentações com mais de 30 dias
+// Executa uma vez por dia usando controle por sessão
+// ============================================================
+if (empty($_SESSION['estoque_limpeza_data']) || $_SESSION['estoque_limpeza_data'] !== date('Y-m-d')) {
+    $removidos = $conn->query("
+        DELETE FROM movimentacoes_estoque
+        WHERE criado_em < DATE_SUB(NOW(), INTERVAL 30 DAY)
+    ");
+    $_SESSION['estoque_limpeza_data'] = date('Y-m-d');
+
+    // Log opcional
+    @mkdir('logs', 0755, true);
+    $qtd_removida = $conn->affected_rows;
+    if ($qtd_removida > 0) {
+        file_put_contents(
+            'logs/estoque_limpeza.log',
+            date('Y-m-d H:i:s') . " | $qtd_removida movimentação(ões) com +30 dias removida(s)\n",
+            FILE_APPEND
+        );
+    }
+}
+
+// ============================================================
 // AÇÕES DE MOVIMENTAÇÃO
 // ============================================================
 
@@ -21,10 +44,10 @@ if (isset($_POST['acao_entrada'])) {
         $antes = (int)$prod['estoque_atual'];
         $depois = $antes + $qtd;
         $conn->query("UPDATE produtos SET estoque_atual=$depois WHERE id=$id_produto");
-        // Reativar produto se estava indisponível por falta de estoque
         if ($depois > 0) $conn->query("UPDATE produtos SET disponivel=1 WHERE id=$id_produto AND disponivel=0");
+        $tipo_mov = 'entrada';
         $stmt = $conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi", $id_produto, $tipo_e='entrada', $qtd, $antes, $depois, $motivo, $id_admin);
+        $stmt->bind_param("isiissi", $id_produto, $tipo_mov, $qtd, $antes, $depois, $motivo, $id_admin);
         $stmt->execute();
         redirecionar('estoque.php', "✅ Entrada de $qtd unidade(s) registrada com sucesso!");
     }
@@ -42,8 +65,9 @@ if (isset($_POST['acao_saida'])) {
         $depois = max(0, $antes - $qtd);
         $conn->query("UPDATE produtos SET estoque_atual=$depois WHERE id=$id_produto");
         if ($depois === 0) $conn->query("UPDATE produtos SET disponivel=0 WHERE id=$id_produto");
+        $tipo_mov = 'saida';
         $stmt = $conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi", $id_produto, $tipo_s='saida', $qtd, $antes, $depois, $motivo, $id_admin);
+        $stmt->bind_param("isiissi", $id_produto, $tipo_mov, $qtd, $antes, $depois, $motivo, $id_admin);
         $stmt->execute();
         redirecionar('estoque.php', "✅ Saída de $qtd unidade(s) registrada com sucesso!");
     }
@@ -62,8 +86,9 @@ if (isset($_POST['acao_ajuste'])) {
         $conn->query("UPDATE produtos SET estoque_atual=$novo_estoque WHERE id=$id_produto");
         if ($novo_estoque === 0) $conn->query("UPDATE produtos SET disponivel=0 WHERE id=$id_produto");
         elseif ($antes === 0 && $novo_estoque > 0) $conn->query("UPDATE produtos SET disponivel=1 WHERE id=$id_produto");
+        $tipo_mov = 'ajuste';
         $stmt = $conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi", $id_produto, $tipo_a='ajuste', $diff, $antes, $novo_estoque, $motivo, $id_admin);
+        $stmt->bind_param("isiissi", $id_produto, $tipo_mov, $diff, $antes, $novo_estoque, $motivo, $id_admin);
         $stmt->execute();
         redirecionar('estoque.php', "✅ Estoque ajustado para $novo_estoque unidade(s)!");
     }
@@ -340,11 +365,11 @@ $msg = $_SESSION['sucesso'] ?? ''; unset($_SESSION['sucesso']);
                     </thead>
                     <tbody>
                     <?php foreach ($produtos as $p):
-                        $s = $p['estoque_atual'];
-                        $min = $p['estoque_minimo'];
-                        $max = max(1, $p['estoque_maximo']);
+                        $s   = (int)$p['estoque_atual'];
+                        $min = (int)$p['estoque_minimo'];
+                        $max = max(1, (int)$p['estoque_maximo']);
                         $pct = min(100, round($s / $max * 100));
-                        if ($s === 0)       { $cls='row-zerado'; $badge='est-zerado'; $lbl='Sem estoque'; $cor='#ef4444'; }
+                        if ($s === 0)       { $cls='row-zerado'; $badge='est-zerado'; $lbl='Sem estoque';   $cor='#ef4444'; }
                         elseif ($s <= $min) { $cls='row-baixo';  $badge='est-baixo';  $lbl='Estoque baixo'; $cor='#f59e0b'; }
                         else                { $cls=''; $badge='est-ok'; $lbl='Normal'; $cor='#10b981'; }
                     ?>
@@ -386,7 +411,13 @@ $msg = $_SESSION['sucesso'] ?? ''; unset($_SESSION['sucesso']);
 
         <!-- HISTÓRICO DE MOVIMENTAÇÕES -->
         <div class="card" id="historico">
-            <h2><i class="fas fa-clock-rotate-left"></i> Histórico de Movimentações</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px;">
+                <h2 style="margin:0;"><i class="fas fa-clock-rotate-left"></i> Histórico de Movimentações</h2>
+                <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 14px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:var(--radius-full);font-size:12px;font-weight:600;color:#1e40af;">
+                    <i class="fas fa-calendar-xmark"></i> Registros mantidos por 30 dias
+                </span>
+            </div>
+            <p style="color:var(--gray);font-size:13px;margin-bottom:20px;">Movimentações com mais de 30 dias são removidas automaticamente.</p>
             <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
                 <div class="mov-tabs">
                     <a href="estoque.php#historico" class="mov-tab <?= !$filtro_mov_tipo?'active':'' ?>">Todos</a>
