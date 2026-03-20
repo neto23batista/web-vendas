@@ -6,6 +6,36 @@ verificar_login('dono');
 
 $id_admin = $_SESSION['id_usuario'];
 
+// ── AUTO-MIGRAÇÃO: colunas de estoque e tabela de movimentações ─
+$cols_prod = array_column($conn->query("SHOW COLUMNS FROM produtos")->fetch_all(MYSQLI_ASSOC), 'Field');
+$estoque_cols = [
+    'estoque_atual'  => "ALTER TABLE produtos ADD COLUMN estoque_atual INT NOT NULL DEFAULT 0 AFTER disponivel",
+    'estoque_minimo' => "ALTER TABLE produtos ADD COLUMN estoque_minimo INT NOT NULL DEFAULT 5",
+    'estoque_maximo' => "ALTER TABLE produtos ADD COLUMN estoque_maximo INT NOT NULL DEFAULT 999",
+    'unidade'        => "ALTER TABLE produtos ADD COLUMN unidade VARCHAR(20) DEFAULT 'un'",
+    'localizacao'    => "ALTER TABLE produtos ADD COLUMN localizacao VARCHAR(60) DEFAULT NULL",
+];
+foreach ($estoque_cols as $col => $sql) {
+    if (!in_array($col, $cols_prod)) $conn->query($sql);
+}
+
+// Tabela de movimentações
+$conn->query("CREATE TABLE IF NOT EXISTS movimentacoes_estoque (
+    id                  INT PRIMARY KEY AUTO_INCREMENT,
+    id_produto          INT NOT NULL,
+    tipo                ENUM('entrada','saida','ajuste','transferencia_out','transferencia_in') NOT NULL,
+    quantidade          INT NOT NULL,
+    estoque_anterior    INT NOT NULL DEFAULT 0,
+    estoque_novo        INT NOT NULL DEFAULT 0,
+    motivo              VARCHAR(255) DEFAULT NULL,
+    id_pedido           INT DEFAULT NULL,
+    id_usuario          INT DEFAULT NULL,
+    localizacao_origem  VARCHAR(60) DEFAULT NULL,
+    localizacao_destino VARCHAR(60) DEFAULT NULL,
+    criado_em           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_produto) REFERENCES produtos(id) ON DELETE CASCADE
+) ENGINE=InnoDB");
+
 // ============================================================
 // LIMPEZA AUTOMÁTICA: remove movimentações com mais de 30 dias
 // Executa uma vez por dia usando controle por sessão

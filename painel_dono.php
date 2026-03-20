@@ -54,13 +54,16 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 <span class="auto-update-badge" style="margin-left:8px;"><i class="fas fa-clock"></i> 30s</span>
             </div>
             <div class="nav-buttons">
+                <a href="relatorios.php" class="btn btn-info"><i class="fas fa-chart-line"></i> Relatórios</a>
+                <a href="nfe.php" class="btn btn-secondary"><i class="fas fa-file-invoice"></i> NF-e</a>
+                <a href="erp.php" class="btn btn-secondary"><i class="fas fa-plug"></i> ERP</a>
                 <a href="gerenciar_produtos.php" class="btn btn-success"><i class="fas fa-boxes"></i> Produtos</a>
                 <a href="estoque.php" class="btn btn-primary" id="btn-estoque" style="position:relative;">
                     <i class="fas fa-boxes-stacked"></i> Estoque
                     <span class="badge-num" id="estoque-alert-badge" style="display:none;background:#f59e0b;"></span>
                 </a>
-                <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning" onclick="return confirm('Limpar pedidos finalizados?')"><i class="fas fa-trash-alt"></i> Limpar</a>
-                <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i> Loja</a>
+                <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning" onclick="return confirm('Limpar pedidos finalizados?')"><i class="fas fa-trash-alt"></i></a>
+                <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i></a>
                 <a href="logout.php" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i></a>
             </div>
         </div>
