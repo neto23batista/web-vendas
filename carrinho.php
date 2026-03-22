@@ -2,29 +2,53 @@
 session_start();
 include "config.php";
 include "helpers.php";
+include "mailer.php";
 
 verificar_login('cliente');
 
 $id_cliente = $_SESSION['id_usuario'];
 
-// ADICIONAR AO CARRINHO
-if (isset($_POST['adicionar_carrinho'])) {
-    $id_produto = (int)$_POST['id_produto'];
-    $quantidade = (int)$_POST['quantidade'];
-    $tipo = $_POST['tipo_produto'] ?? 'normal';
+// Taxa de entrega — definida em um único lugar
+const TAXA_DELIVERY_VALOR = 5.00;
 
-    $produto = $conn->query("SELECT * FROM produtos WHERE id=$id_produto AND disponivel=1")->fetch_assoc();
+// ── ADICIONAR AO CARRINHO ────────────────────────────────────
+if (isset($_POST['adicionar_carrinho'])) {
+    $id_produto = (int)($_POST['id_produto'] ?? 0);
+    $quantidade = max(1, (int)($_POST['quantidade'] ?? 1));
+    $tipo       = in_array($_POST['tipo_produto'] ?? '', ['normal','especial']) ? $_POST['tipo_produto'] : 'normal';
+
+    $stmt = $conn->prepare("SELECT * FROM produtos WHERE id = ? AND disponivel = 1");
+    $stmt->bind_param("i", $id_produto);
+    $stmt->execute();
+    $produto = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
     if ($produto) {
-        $existe = $conn->query("SELECT * FROM carrinho WHERE id_cliente=$id_cliente AND id_produto=$id_produto AND tipo_produto='$tipo'")->fetch_assoc();
+        $stmt = $conn->prepare(
+            "SELECT * FROM carrinho WHERE id_cliente = ? AND id_produto = ? AND tipo_produto = ?"
+        );
+        $stmt->bind_param("iis", $id_cliente, $id_produto, $tipo);
+        $stmt->execute();
+        $existe = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
         if ($existe) {
             $nova_qtd = $existe['quantidade'] + $quantidade;
-            $conn->query("UPDATE carrinho SET quantidade=$nova_qtd WHERE id={$existe['id']}");
+            $stmt = $conn->prepare("UPDATE carrinho SET quantidade = ? WHERE id = ?");
+            $stmt->bind_param("ii", $nova_qtd, $existe['id']);
+            $stmt->execute();
+            $stmt->close();
         } else {
-            $conn->query("INSERT INTO carrinho (id_cliente, id_produto, tipo_produto, quantidade) VALUES ($id_cliente, $id_produto, '$tipo', $quantidade)");
+            $stmt = $conn->prepare(
+                "INSERT INTO carrinho (id_cliente, id_produto, tipo_produto, quantidade) VALUES (?, ?, ?, ?)"
+            );
+            $stmt->bind_param("iisi", $id_cliente, $id_produto, $tipo, $quantidade);
+            $stmt->execute();
+            $stmt->close();
         }
 
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             echo json_encode(['sucesso' => true]); exit;
         }
         redirecionar($_POST['redirect'] ?? 'carrinho.php', 'Produto adicionado à sacola!');
@@ -33,106 +57,195 @@ if (isset($_POST['adicionar_carrinho'])) {
     }
 }
 
-// ATUALIZAR QUANTIDADE VIA AJAX
+// ── ATUALIZAR QUANTIDADE VIA AJAX ────────────────────────────
 if (isset($_POST['ajax_atualizar_quantidade'])) {
     header('Content-Type: application/json');
-    $id_carrinho = (int)$_POST['id_carrinho'];
-    $quantidade  = (int)$_POST['quantidade'];
+    $id_carrinho = (int)($_POST['id_carrinho'] ?? 0);
+    $quantidade  = (int)($_POST['quantidade']  ?? 0);
 
     if ($quantidade > 0) {
-        $conn->query("UPDATE carrinho SET quantidade=$quantidade WHERE id=$id_carrinho AND id_cliente=$id_cliente");
-        $item = $conn->query("SELECT c.quantidade, p.preco FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id = $id_carrinho")->fetch_assoc();
-        $itens_all = $conn->query("SELECT c.quantidade, p.preco FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id_cliente = $id_cliente AND p.disponivel = 1")->fetch_all(MYSQLI_ASSOC);
-        $total = 0; $total_itens = 0;
-        foreach ($itens_all as $i) { $total += $i['preco'] * $i['quantidade']; $total_itens += $i['quantidade']; }
-        echo json_encode(['sucesso' => true, 'subtotal_item' => $item['preco'] * $quantidade, 'subtotal_item_formatado' => formatar_preco($item['preco'] * $quantidade), 'total' => $total, 'total_formatado' => formatar_preco($total), 'total_itens' => $total_itens]);
+        $stmt = $conn->prepare(
+            "UPDATE carrinho SET quantidade = ? WHERE id = ? AND id_cliente = ?"
+        );
+        $stmt->bind_param("iii", $quantidade, $id_carrinho, $id_cliente);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $conn->prepare(
+            "SELECT c.quantidade, p.preco FROM carrinho c
+             JOIN produtos p ON c.id_produto = p.id
+             WHERE c.id = ?"
+        );
+        $stmt->bind_param("i", $id_carrinho);
+        $stmt->execute();
+        $item = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
     } else {
-        $conn->query("DELETE FROM carrinho WHERE id=$id_carrinho AND id_cliente=$id_cliente");
-        echo json_encode(['sucesso' => true, 'removido' => true]);
+        $stmt = $conn->prepare(
+            "DELETE FROM carrinho WHERE id = ? AND id_cliente = ?"
+        );
+        $stmt->bind_param("ii", $id_carrinho, $id_cliente);
+        $stmt->execute();
+        $stmt->close();
+        $item = null;
     }
+
+    $stmt = $conn->prepare(
+        "SELECT c.quantidade, p.preco FROM carrinho c
+         JOIN produtos p ON c.id_produto = p.id
+         WHERE c.id_cliente = ? AND p.disponivel = 1"
+    );
+    $stmt->bind_param("i", $id_cliente);
+    $stmt->execute();
+    $itens_all = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $total = 0; $total_itens = 0;
+    foreach ($itens_all as $i) {
+        $total       += $i['preco'] * $i['quantidade'];
+        $total_itens += $i['quantidade'];
+    }
+    echo json_encode([
+        'sucesso'               => true,
+        'removido'              => $quantidade <= 0,
+        'subtotal_item'         => $item ? $item['preco'] * $quantidade : 0,
+        'subtotal_item_formatado' => $item ? formatar_preco($item['preco'] * $quantidade) : 'R$ 0,00',
+        'total'                 => $total,
+        'total_formatado'       => formatar_preco($total),
+        'total_itens'           => $total_itens,
+    ]);
     exit;
 }
 
-// REMOVER ITEM
+// ── REMOVER ITEM ─────────────────────────────────────────────
 if (isset($_GET['remover'])) {
-    $conn->query("DELETE FROM carrinho WHERE id=" . (int)$_GET['remover'] . " AND id_cliente=$id_cliente");
+    $id_item = (int)$_GET['remover'];
+    $stmt = $conn->prepare("DELETE FROM carrinho WHERE id = ? AND id_cliente = ?");
+    $stmt->bind_param("ii", $id_item, $id_cliente);
+    $stmt->execute();
+    $stmt->close();
     redirecionar('carrinho.php', 'Item removido!');
 }
 
-// LIMPAR CARRINHO
+// ── LIMPAR CARRINHO ──────────────────────────────────────────
 if (isset($_GET['limpar'])) {
-    $conn->query("DELETE FROM carrinho WHERE id_cliente=$id_cliente");
+    $stmt = $conn->prepare("DELETE FROM carrinho WHERE id_cliente = ?");
+    $stmt->bind_param("i", $id_cliente);
+    $stmt->execute();
+    $stmt->close();
     redirecionar('carrinho.php', 'Sacola esvaziada!');
 }
 
-// FINALIZAR PEDIDO
+// ── FINALIZAR PEDIDO ─────────────────────────────────────────
 if (isset($_POST['finalizar_pedido'])) {
-    $observacoes    = sanitizar_texto($_POST['observacoes'] ?? '');
-    $tipo_retirada  = $_POST['tipo_retirada'] ?? 'balcao';
-    $forma_pagamento = sanitizar_texto($_POST['forma_pagamento'] ?? 'presencial');
-    $numero_mesa    = '';
+    verificar_csrf();
 
-    // Labels legíveis para salvar no pedido
-    $label_retirada  = $tipo_retirada === 'delivery' ? 'Delivery' : 'Retirada no Local';
-    $label_pagamento = $forma_pagamento === 'app' ? 'Pagamento pelo App' : ($tipo_retirada === 'delivery' ? 'Pagar na Entrega' : 'Pagar na Retirada');
+    $observacoes     = sanitizar_texto($_POST['observacoes']     ?? '');
+    $tipo_retirada   = in_array($_POST['tipo_retirada'] ?? '', ['balcao','delivery']) ? $_POST['tipo_retirada'] : 'balcao';
+    $forma_pagamento = in_array($_POST['forma_pagamento'] ?? '', ['presencial','app']) ? $_POST['forma_pagamento'] : 'presencial';
 
-    if ($tipo_retirada == 'delivery') {
+    $label_pagamento = $forma_pagamento === 'app'
+        ? 'Pagamento pelo App'
+        : ($tipo_retirada === 'delivery' ? 'Pagar na Entrega' : 'Pagar na Retirada');
+
+    if ($tipo_retirada === 'delivery') {
         $endereco_entrega = sanitizar_texto($_POST['endereco_entrega'] ?? '');
         if (empty($endereco_entrega)) {
             redirecionar('carrinho.php', 'Por favor, informe o endereço de entrega!', 'erro');
         }
-        $prefixo = "📦 DELIVERY – Endereço: $endereco_entrega | 💳 $label_pagamento";
+        $taxa_fmt    = formatar_preco(TAXA_DELIVERY_VALOR);
+        $prefixo     = "📦 DELIVERY – Endereço: $endereco_entrega | Taxa: $taxa_fmt | 💳 $label_pagamento";
         $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
     } else {
-        $prefixo = "🏪 RETIRADA NO LOCAL | 💳 $label_pagamento";
+        $prefixo     = "🏪 RETIRADA NO LOCAL | 💳 $label_pagamento";
         $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
     }
 
-    $itens = $conn->query("SELECT c.*, p.nome, p.preco FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id_cliente = $id_cliente AND p.disponivel = 1")->fetch_all(MYSQLI_ASSOC);
+    // Buscar itens do carrinho
+    $stmt = $conn->prepare(
+        "SELECT c.*, p.nome, p.preco FROM carrinho c
+         JOIN produtos p ON c.id_produto = p.id
+         WHERE c.id_cliente = ? AND p.disponivel = 1"
+    );
+    $stmt->bind_param("i", $id_cliente);
+    $stmt->execute();
+    $itens = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
 
     if (empty($itens)) { redirecionar('carrinho.php', 'Sacola vazia!', 'erro'); }
 
-    $total = 0;
-    foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; }
+    $subtotal = 0;
+    foreach ($itens as $item) { $subtotal += $item['preco'] * $item['quantidade']; }
 
-    // Adicionar taxa de entrega se for delivery
-    $taxa_delivery = 5.00;
-    if ($tipo_retirada === 'delivery') {
-        $total += $taxa_delivery;
-        // Incluir taxa no prefixo de observações
-        $observacoes = str_replace('📦 DELIVERY', '📦 DELIVERY (+R$ 5,00 frete)', $observacoes);
-    }
+    $total = $subtotal + ($tipo_retirada === 'delivery' ? TAXA_DELIVERY_VALOR : 0);
 
     $pg_status_inicial = $forma_pagamento === 'app' ? 'pendente' : 'aprovado';
-    $stmt = $conn->prepare("INSERT INTO pedidos (id_cliente, total, observacoes, numero_mesa, tipo_retirada, forma_pagamento, pagamento_status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $numero_mesa       = '';
+
+    $stmt = $conn->prepare(
+        "INSERT INTO pedidos (id_cliente, total, observacoes, numero_mesa, tipo_retirada, forma_pagamento, pagamento_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
     $stmt->bind_param("idsssss", $id_cliente, $total, $observacoes, $numero_mesa, $tipo_retirada, $forma_pagamento, $pg_status_inicial);
     $stmt->execute();
     $id_pedido = $conn->insert_id;
+    $stmt->close();
 
     foreach ($itens as $item) {
-        $stmt = $conn->prepare("INSERT INTO pedido_itens (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)");
+        $stmt = $conn->prepare(
+            "INSERT INTO pedido_itens (id_pedido, id_produto, quantidade, preco_unitario) VALUES (?, ?, ?, ?)"
+        );
         $stmt->bind_param("iiid", $id_pedido, $item['id_produto'], $item['quantidade'], $item['preco']);
         $stmt->execute();
+        $stmt->close();
     }
 
-    $conn->query("DELETE FROM carrinho WHERE id_cliente=$id_cliente");
+    // Limpar carrinho
+    $stmt = $conn->prepare("DELETE FROM carrinho WHERE id_cliente = ?");
+    $stmt->bind_param("i", $id_cliente);
+    $stmt->execute();
+    $stmt->close();
 
-    // Se pagamento pelo app → criar preferência no Mercado Pago
     if ($forma_pagamento === 'app') {
         header("Location: criar_preferencia.php?pedido=$id_pedido");
         exit;
     }
 
-    $msg_pedido = $tipo_retirada == 'delivery'
+    // E-mail de confirmação
+    $stmt_cli = $conn->prepare("SELECT nome, email FROM usuarios WHERE id = ?");
+    $stmt_cli->bind_param("i", $id_cliente);
+    $stmt_cli->execute();
+    $cli = $stmt_cli->get_result()->fetch_assoc();
+    $stmt_cli->close();
+    if ($cli) {
+        $itens_email = array_map(fn($i) => ['nome' => $i['nome'], 'preco' => $i['preco'], 'quantidade' => $i['quantidade']], $itens);
+        $corpo = email_confirmacao_pedido($id_pedido, $cli['nome'], $itens_email, $total, $tipo_retirada);
+        enviar_email($cli['email'], "Pedido #$id_pedido confirmado – FarmaVida", $corpo);
+    }
+
+    $msg_pedido = $tipo_retirada === 'delivery'
         ? "Pedido #$id_pedido confirmado! Em breve seu delivery será enviado."
         : "Pedido #$id_pedido confirmado! Retire no balcão quando estiver pronto.";
     redirecionar('painel_cliente.php', $msg_pedido);
 }
 
-$itens = $conn->query("SELECT c.*, p.nome, p.descricao, p.preco, p.imagem, p.categoria FROM carrinho c JOIN produtos p ON c.id_produto = p.id WHERE c.id_cliente = $id_cliente AND p.disponivel = 1")->fetch_all(MYSQLI_ASSOC);
+// ── LEITURA DOS ITENS ────────────────────────────────────────
+$stmt = $conn->prepare(
+    "SELECT c.*, p.nome, p.descricao, p.preco, p.imagem, p.categoria
+     FROM carrinho c
+     JOIN produtos p ON c.id_produto = p.id
+     WHERE c.id_cliente = ? AND p.disponivel = 1"
+);
+$stmt->bind_param("i", $id_cliente);
+$stmt->execute();
+$itens = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 $total = 0; $total_itens = 0;
-foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $total_itens += $item['quantidade']; }
+foreach ($itens as $item) {
+    $total       += $item['preco'] * $item['quantidade'];
+    $total_itens += $item['quantidade'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -151,8 +264,8 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                 Farma<span>Vida</span>
             </a>
             <div class="nav-buttons">
-                <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i> Continuar Comprando</a>
-                <a href="painel_cliente.php" class="btn btn-primary"><i class="fas fa-user"></i> Minha Conta</a>
+                <a href="index.php"          class="btn btn-secondary"><i class="fas fa-store"></i> Continuar Comprando</a>
+                <a href="painel_cliente.php" class="btn btn-primary"  ><i class="fas fa-user"></i> Minha Conta</a>
             </div>
         </div>
     </div>
@@ -168,7 +281,7 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                     <p style="margin:0;font-size:13px;color:var(--gray);" id="header-itens"><?= $total_itens ?> item(ns) na sacola</p>
                 </div>
             </div>
-            <a href="index.php" style="font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;display:flex;align-items:center;gap:6px;opacity:.8;transition:opacity .2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+            <a href="index.php" style="font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;display:flex;align-items:center;gap:6px;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
                 <i class="fas fa-plus"></i> Adicionar mais
             </a>
         </div>
@@ -191,12 +304,14 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
             </div>
         <?php else: ?>
             <div class="cart-layout">
+
                 <!-- ITENS -->
                 <div id="cart-items-container">
                     <?php foreach ($itens as $item): ?>
                         <div class="cart-item" id="item-<?= $item['id'] ?>" data-preco="<?= $item['preco'] ?>">
                             <?php if ($item['imagem'] && file_exists($item['imagem'])): ?>
-                                <img src="<?= $item['imagem'] ?>" alt="<?= htmlspecialchars($item['nome']) ?>">
+                                <img src="<?= htmlspecialchars($item['imagem']) ?>"
+                                     alt="<?= htmlspecialchars($item['nome']) ?>">
                             <?php else: ?>
                                 <div style="width:90px;height:90px;background:var(--bg);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;border:1px solid var(--light-gray);">
                                     <i class="fas fa-pills" style="font-size:28px;color:var(--light-gray);"></i>
@@ -210,14 +325,14 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                             </div>
 
                             <div class="qty-controls">
-                                <button type="button" class="qty-btn minus" onclick="alterarQtd(<?= $item['id'] ?>, -1)" title="Diminuir"><i class="fas fa-minus"></i></button>
+                                <button type="button" class="qty-btn minus" onclick="alterarQtd(<?= $item['id'] ?>, -1)"><i class="fas fa-minus"></i></button>
                                 <span class="qty-value" id="qty-<?= $item['id'] ?>"><?= $item['quantidade'] ?></span>
-                                <button type="button" class="qty-btn plus" onclick="alterarQtd(<?= $item['id'] ?>, 1)" title="Aumentar"><i class="fas fa-plus"></i></button>
+                                <button type="button" class="qty-btn plus" onclick="alterarQtd(<?= $item['id'] ?>, 1)"><i class="fas fa-plus"></i></button>
                             </div>
 
                             <div class="subtotal-value" id="subtotal-<?= $item['id'] ?>"><?= formatar_preco($item['preco'] * $item['quantidade']) ?></div>
 
-                            <button type="button" class="remove-btn" onclick="removerItem(<?= $item['id'] ?>)" title="Remover"><i class="fas fa-trash"></i></button>
+                            <button type="button" class="remove-btn" onclick="removerItem(<?= $item['id'] ?>)"><i class="fas fa-trash"></i></button>
                         </div>
                     <?php endforeach; ?>
 
@@ -232,39 +347,36 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                     <h3><i class="fas fa-receipt" style="color:var(--primary);"></i> Finalizar Compra</h3>
 
                     <form method="POST" id="checkout-form">
+                        <?= campo_csrf() ?>
 
-                        <!-- OPÇÕES DE ENTREGA -->
+                        <!-- TIPO DE ENTREGA -->
                         <div style="margin-bottom:20px;">
                             <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
                                 <i class="fas fa-truck-medical"></i> Como deseja receber?
                             </label>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-
-                                <!-- RETIRAR NO LOCAL -->
                                 <label style="cursor:pointer;">
                                     <input type="radio" name="tipo_retirada" value="balcao" checked style="display:none;" id="r-balcao">
                                     <div id="lbl-balcao" onclick="selecionarRetirada('balcao')"
                                          style="padding:18px 12px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);transition:all .25s;cursor:pointer;">
                                         <i class="fas fa-store-alt" id="icon-balcao" style="font-size:28px;color:var(--primary);display:block;margin-bottom:8px;"></i>
                                         <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Buscar no Local</span>
-                                        <span style="font-size:11px;color:var(--gray);display:block;margin-top:3px;">Retire na farmácia</span>
+                                        <span style="font-size:11px;color:var(--success);display:block;margin-top:3px;font-weight:700;">✓ Sem taxa</span>
                                     </div>
                                 </label>
-
-                                <!-- DELIVERY -->
                                 <label style="cursor:pointer;">
                                     <input type="radio" name="tipo_retirada" value="delivery" style="display:none;" id="r-delivery">
                                     <div id="lbl-delivery" onclick="selecionarRetirada('delivery')"
                                          style="padding:18px 12px;border:2px solid var(--light-gray);border-radius:var(--radius-md);text-align:center;transition:all .25s;cursor:pointer;">
                                         <i class="fas fa-motorcycle" id="icon-delivery" style="font-size:28px;color:var(--gray-light);display:block;margin-bottom:8px;"></i>
                                         <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Delivery</span>
-                                        <span style="font-size:11px;color:var(--gray);display:block;margin-top:3px;">Entrega em casa</span>
+                                        <span style="font-size:11px;color:var(--warning);display:block;margin-top:3px;font-weight:700;">+ <?= formatar_preco(TAXA_DELIVERY_VALOR) ?></span>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
-                        <!-- CAMPO ENDEREÇO (aparece só no delivery) -->
+                        <!-- ENDEREÇO ENTREGA -->
                         <div id="delivery-field" style="display:none;margin-bottom:18px;animation:fadeUp .3s ease;">
                             <div style="background:linear-gradient(135deg,#e6f0ff,#f0f7ff);border:1.5px solid #bfdbfe;border-radius:var(--radius-md);padding:16px;">
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
@@ -276,19 +388,17 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                                        style="background:white;border-color:#bfdbfe;">
                                 <p style="font-size:11px;color:var(--gray);margin-top:8px;display:flex;align-items:center;gap:5px;">
                                     <i class="fas fa-info-circle" style="color:var(--info);"></i>
-                                    Consulte a taxa de entrega com o atendente
+                                    Taxa de entrega: <strong><?= formatar_preco(TAXA_DELIVERY_VALOR) ?></strong> (já incluída no total)
                                 </p>
                             </div>
                         </div>
 
-                        <!-- FORMA DE PAGAMENTO (muda dinamicamente) -->
+                        <!-- FORMA DE PAGAMENTO -->
                         <div style="margin-bottom:20px;">
                             <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
                                 <i class="fas fa-wallet"></i> Como deseja pagar?
                             </label>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="pagamento-opcoes">
-
-                                <!-- OPÇÃO 1: muda o label conforme retirada (Na Retirada / Na Entrega) -->
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                                 <label style="cursor:pointer;">
                                     <input type="radio" name="forma_pagamento" value="presencial" checked style="display:none;" id="p-presencial">
                                     <div id="lbl-presencial" onclick="selecionarPagamento('presencial')"
@@ -298,8 +408,6 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                                         <span id="sub-presencial" style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Dinheiro ou cartão</span>
                                     </div>
                                 </label>
-
-                                <!-- OPÇÃO 2: Pagar pelo App -->
                                 <label style="cursor:pointer;">
                                     <input type="radio" name="forma_pagamento" value="app" style="display:none;" id="p-app">
                                     <div id="lbl-app" onclick="selecionarPagamento('app')"
@@ -310,19 +418,18 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                                     </div>
                                 </label>
                             </div>
-
-                            <!-- Campo Pix / dados app (aparece ao selecionar app) -->
                             <div id="app-field" style="display:none;margin-top:12px;animation:fadeUp .3s ease;">
                                 <div style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1.5px solid #c4b5fd;border-radius:var(--radius-md);padding:14px;display:flex;align-items:center;gap:12px;">
                                     <i class="fas fa-qrcode" style="font-size:28px;color:#7c3aed;flex-shrink:0;"></i>
                                     <div>
                                         <strong style="color:#4c1d95;font-size:13px;display:block;">Pagamento pelo App</strong>
-                                        <span style="font-size:12px;color:#6d28d9;">Após confirmar, enviaremos o link de pagamento via WhatsApp ou e-mail.</span>
+                                        <span style="font-size:12px;color:#6d28d9;">Após confirmar, você será redirecionado ao Mercado Pago.</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- RESUMO DE VALORES -->
                         <div style="background:var(--bg);padding:16px;border-radius:var(--radius-md);margin-bottom:18px;">
                             <div class="checkout-line">
                                 <span>Subtotal (<span id="qtd-itens"><?= $total_itens ?></span> itens)</span>
@@ -333,7 +440,7 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                                     <i class="fas fa-motorcycle" style="color:var(--secondary);font-size:12px;"></i>
                                     Taxa de entrega
                                 </span>
-                                <span style="color:var(--secondary);font-weight:700;">+ R$ 5,00</span>
+                                <span style="color:var(--secondary);font-weight:700;">+ <?= formatar_preco(TAXA_DELIVERY_VALOR) ?></span>
                             </div>
                             <div class="checkout-line" id="linha-frete-gratis">
                                 <span>Taxa de entrega</span>
@@ -350,14 +457,14 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
                             <textarea name="observacoes" rows="2" placeholder="Prescrição, alergias, orientações do médico..."></textarea>
                         </div>
 
-                        <button type="submit" name="finalizar_pedido" class="btn btn-success btn-lg" style="width:100%;justify-content:center;">
+                        <button type="submit" name="finalizar_pedido" class="btn btn-success btn-lg"
+                                style="width:100%;justify-content:center;">
                             <i class="fas fa-check"></i> Confirmar Pedido
                         </button>
                     </form>
 
                     <p style="text-align:center;margin-top:14px;font-size:12px;color:var(--gray);">
-                        <i class="fas fa-shield-halved"></i> Compra 100% segura &nbsp;|&nbsp;
-                        <i class="fas fa-credit-card"></i> Pagamento na retirada ou na entrega
+                        <i class="fas fa-shield-halved"></i> Compra 100% segura
                     </p>
                 </div>
             </div>
@@ -365,51 +472,50 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
     </div>
 
     <script>
-        let itens = <?= json_encode(array_map(function($i){ return ['id'=>$i['id'],'preco'=>floatval($i['preco']),'quantidade'=>intval($i['quantidade'])]; }, $itens)) ?>;
+        // Taxa de delivery vinda do PHP — fonte única de verdade
+        const TAXA_DELIVERY = <?= TAXA_DELIVERY_VALOR ?>;
 
-        const TAXA_DELIVERY = 5.00;
+        let itens = <?= json_encode(array_map(function($i){
+            return ['id' => $i['id'], 'preco' => floatval($i['preco']), 'quantidade' => intval($i['quantidade'])];
+        }, $itens)) ?>;
+
         let isDeliveryAtivo = false;
 
         function selecionarRetirada(tipo) {
             document.getElementById('r-balcao').checked   = (tipo === 'balcao');
             document.getElementById('r-delivery').checked = (tipo === 'delivery');
 
-            const lblBalcao    = document.getElementById('lbl-balcao');
-            const lblDelivery  = document.getElementById('lbl-delivery');
-            const iconBalcao   = document.getElementById('icon-balcao');
-            const iconDelivery = document.getElementById('icon-delivery');
-
-            // Visual — Balcão
             const isBalcao = tipo === 'balcao';
-            lblBalcao.style.borderColor = isBalcao ? 'var(--primary)' : 'var(--light-gray)';
-            lblBalcao.style.background  = isBalcao ? 'rgba(0,135,90,.07)' : '';
-            iconBalcao.style.color      = isBalcao ? 'var(--primary)' : 'var(--gray-light)';
+            const lblB = document.getElementById('lbl-balcao');
+            const lblD = document.getElementById('lbl-delivery');
+            const icB  = document.getElementById('icon-balcao');
+            const icD  = document.getElementById('icon-delivery');
 
-            // Visual — Delivery
-            isDeliveryAtivo = tipo === 'delivery';
-            lblDelivery.style.borderColor = isDeliveryAtivo ? 'var(--secondary)' : 'var(--light-gray)';
-            lblDelivery.style.background  = isDeliveryAtivo ? 'rgba(0,82,204,.07)' : '';
-            iconDelivery.style.color      = isDeliveryAtivo ? 'var(--secondary)' : 'var(--gray-light)';
+            lblB.style.borderColor = isBalcao ? 'var(--primary)'   : 'var(--light-gray)';
+            lblB.style.background  = isBalcao ? 'rgba(0,135,90,.07)' : '';
+            icB.style.color        = isBalcao ? 'var(--primary)'   : 'var(--gray-light)';
 
-            // Campo endereço
-            const deliveryField   = document.getElementById('delivery-field');
-            const enderecoEntrega = document.getElementById('endereco_entrega');
-            deliveryField.style.display = isDeliveryAtivo ? 'block' : 'none';
-            enderecoEntrega.required    = isDeliveryAtivo;
-            if (!isDeliveryAtivo) enderecoEntrega.value = '';
+            isDeliveryAtivo = !isBalcao;
+            lblD.style.borderColor = isDeliveryAtivo ? 'var(--secondary)'     : 'var(--light-gray)';
+            lblD.style.background  = isDeliveryAtivo ? 'rgba(0,82,204,.07)'   : '';
+            icD.style.color        = isDeliveryAtivo ? 'var(--secondary)'     : 'var(--gray-light)';
 
-            // Mostrar/ocultar linha de frete no resumo
-            document.getElementById('linha-frete').style.display       = isDeliveryAtivo ? 'flex' : 'none';
-            document.getElementById('linha-frete-gratis').style.display = isDeliveryAtivo ? 'none' : 'flex';
+            const dfld  = document.getElementById('delivery-field');
+            const frete = document.getElementById('linha-frete');
+            const gratis= document.getElementById('linha-frete-gratis');
+            const endEl = document.getElementById('endereco_entrega');
 
-            // Atualizar label do pagamento presencial conforme tipo
-            document.getElementById('txt-presencial').textContent = isDeliveryAtivo ? 'Na Entrega'       : 'Na Retirada';
+            dfld.style.display  = isDeliveryAtivo ? 'block' : 'none';
+            endEl.required      = isDeliveryAtivo;
+            if (!isDeliveryAtivo) endEl.value = '';
+
+            frete.style.display  = isDeliveryAtivo ? 'flex' : 'none';
+            gratis.style.display = isDeliveryAtivo ? 'none' : 'flex';
+
+            document.getElementById('txt-presencial').textContent = isDeliveryAtivo ? 'Na Entrega'        : 'Na Retirada';
             document.getElementById('sub-presencial').textContent = isDeliveryAtivo ? 'Pago ao entregador' : 'Dinheiro ou cartão';
 
-            // Recalcular total com/sem frete
             atualizarTotalGeral();
-
-            // Reset seleção de pagamento para presencial ao trocar modo
             selecionarPagamento('presencial');
         }
 
@@ -417,57 +523,62 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
             document.getElementById('p-presencial').checked = (tipo === 'presencial');
             document.getElementById('p-app').checked        = (tipo === 'app');
 
-            const lblPresencial = document.getElementById('lbl-presencial');
-            const lblApp        = document.getElementById('lbl-app');
-            const iconPresencial = document.getElementById('icon-presencial');
-            const iconApp        = document.getElementById('icon-app');
-            const appField       = document.getElementById('app-field');
-
-            // Visual — Presencial
             const isPres = tipo === 'presencial';
-            lblPresencial.style.borderColor = isPres ? 'var(--primary)' : 'var(--light-gray)';
-            lblPresencial.style.background  = isPres ? 'rgba(0,135,90,.07)' : '';
-            iconPresencial.style.color      = isPres ? 'var(--primary)' : 'var(--gray-light)';
+            const isApp  = !isPres;
 
-            // Visual — App
-            const isApp = tipo === 'app';
-            lblApp.style.borderColor = isApp ? '#7c3aed' : 'var(--light-gray)';
-            lblApp.style.background  = isApp ? 'rgba(124,58,237,.07)' : '';
-            iconApp.style.color      = isApp ? '#7c3aed' : 'var(--gray-light)';
+            const lblP = document.getElementById('lbl-presencial');
+            const lblA = document.getElementById('lbl-app');
+            const icP  = document.getElementById('icon-presencial');
+            const icA  = document.getElementById('icon-app');
 
-            // Info box
-            appField.style.display = isApp ? 'block' : 'none';
+            lblP.style.borderColor = isPres ? 'var(--primary)'     : 'var(--light-gray)';
+            lblP.style.background  = isPres ? 'rgba(0,135,90,.07)' : '';
+            icP.style.color        = isPres ? 'var(--primary)'     : 'var(--gray-light)';
+
+            lblA.style.borderColor = isApp ? '#7c3aed'              : 'var(--light-gray)';
+            lblA.style.background  = isApp ? 'rgba(124,58,237,.07)' : '';
+            icA.style.color        = isApp ? '#7c3aed'              : 'var(--gray-light)';
+
+            document.getElementById('app-field').style.display = isApp ? 'block' : 'none';
         }
 
-        function formatarPreco(v) { return 'R$ ' + parseFloat(v).toFixed(2).replace('.', ','); }
+        function formatarPreco(v) {
+            return 'R$ ' + parseFloat(v).toFixed(2).replace('.', ',');
+        }
 
         function mostrarToast(msg) {
-            document.querySelectorAll('.update-toast').forEach(t=>t.remove());
+            document.querySelectorAll('.update-toast').forEach(t => t.remove());
             const t = document.createElement('div');
-            t.className='toast'; t.innerHTML=`<i class="fas fa-check-circle"></i> ${msg}`;
+            t.className = 'toast';
+            t.innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`;
             document.body.appendChild(t);
-            setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); },2000);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
         }
 
         async function alterarQtd(idCarrinho, delta) {
-            const item = itens.find(i=>i.id==idCarrinho);
+            const item = itens.find(i => i.id == idCarrinho);
             if (!item) return;
-            const novaQtd = item.quantidade + delta;
-            const cartItem = document.getElementById('item-'+idCarrinho);
 
-            if (novaQtd <= 0) { if(confirm('Remover este item?')) removerItem(idCarrinho); return; }
+            const novaQtd    = item.quantidade + delta;
+            const cartItem   = document.getElementById('item-' + idCarrinho);
 
-            cartItem.style.opacity='.6';
+            if (novaQtd <= 0) {
+                if (confirm('Remover este item?')) removerItem(idCarrinho);
+                return;
+            }
+
+            cartItem.style.opacity = '.6';
             item.quantidade = novaQtd;
-            document.getElementById('qty-'+idCarrinho).textContent = novaQtd;
-            const novoSub = item.preco * novaQtd;
-            document.getElementById('subtotal-'+idCarrinho).textContent = formatarPreco(novoSub);
+            document.getElementById('qty-' + idCarrinho).textContent       = novaQtd;
+            document.getElementById('subtotal-' + idCarrinho).textContent  = formatarPreco(item.preco * novaQtd);
             atualizarTotalGeral();
-            cartItem.style.opacity='1';
+            cartItem.style.opacity = '1';
 
             const fd = new FormData();
-            fd.append('ajax_atualizar_quantidade','1'); fd.append('id_carrinho',idCarrinho); fd.append('quantidade',novaQtd);
-            await fetch('carrinho.php',{method:'POST',body:fd});
+            fd.append('ajax_atualizar_quantidade', '1');
+            fd.append('id_carrinho', idCarrinho);
+            fd.append('quantidade',  novaQtd);
+            await fetch('carrinho.php', {method:'POST', body:fd});
             mostrarToast('Quantidade atualizada!');
         }
 
@@ -475,19 +586,20 @@ foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; $tot
             let subtotal = 0, qtd = 0;
             itens.forEach(i => { subtotal += i.preco * i.quantidade; qtd += i.quantidade; });
             const frete = isDeliveryAtivo ? TAXA_DELIVERY : 0;
-            const total = subtotal + frete;
             document.getElementById('subtotal-geral').textContent = formatarPreco(subtotal);
-            document.getElementById('total-geral').textContent    = formatarPreco(total);
+            document.getElementById('total-geral').textContent    = formatarPreco(subtotal + frete);
             document.getElementById('qtd-itens').textContent      = qtd;
             document.getElementById('header-itens').textContent   = qtd + ' item(ns) na sacola';
         }
 
         function removerItem(idCarrinho) {
-            const cartItem = document.getElementById('item-'+idCarrinho);
-            cartItem.style.opacity='0'; cartItem.style.transform='translateX(-100%)'; cartItem.style.transition='.3s';
-            itens = itens.filter(i=>i.id!=idCarrinho);
+            const cartItem = document.getElementById('item-' + idCarrinho);
+            cartItem.style.opacity    = '0';
+            cartItem.style.transform  = 'translateX(-100%)';
+            cartItem.style.transition = '.3s';
+            itens = itens.filter(i => i.id != idCarrinho);
             atualizarTotalGeral();
-            setTimeout(()=>{ window.location.href='?remover='+idCarrinho; },300);
+            setTimeout(() => { window.location.href = '?remover=' + idCarrinho; }, 300);
         }
     </script>
 </body>

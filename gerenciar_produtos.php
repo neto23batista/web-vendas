@@ -5,39 +5,52 @@ include "helpers.php";
 
 verificar_login('dono');
 
+// ── ADICIONAR PRODUTO ────────────────────────────────────────
 if (isset($_POST['adicionar_produto'])) {
-    $nome      = sanitizar_texto($_POST['nome']);
-    $descricao = sanitizar_texto($_POST['descricao']);
-    $preco     = (float) $_POST['preco'];
-    $categoria = sanitizar_texto($_POST['categoria']);
-    $imagem    = '';
+    verificar_csrf();
+
+    $nome      = sanitizar_texto($_POST['nome']      ?? '');
+    $descricao = sanitizar_texto($_POST['descricao'] ?? '');
+    $preco     = (float)($_POST['preco'] ?? 0);
+    $categoria = sanitizar_texto($_POST['categoria'] ?? '');
 
     if (!isset($_FILES['imagem']) || $_FILES['imagem']['error'] == UPLOAD_ERR_NO_FILE) {
-        $_SESSION['erro'] = 'Por favor, adicione uma imagem do produto!';
-        redirecionar('gerenciar_produtos.php'); exit;
-    }
-    if (isset($_FILES['imagem']) && $_FILES['imagem']['error'] == 0) {
-        $resultado = upload_imagem($_FILES['imagem']);
-        if ($resultado['sucesso']) { $imagem = $resultado['caminho']; }
-        else { $_SESSION['erro'] = $resultado['mensagem']; redirecionar('gerenciar_produtos.php'); exit; }
+        redirecionar('gerenciar_produtos.php', 'Por favor, adicione uma imagem do produto!', 'erro');
     }
 
-    $stmt = $conn->prepare("INSERT INTO produtos (nome, descricao, preco, categoria, imagem) VALUES (?, ?, ?, ?, ?)");
+    $resultado = upload_imagem($_FILES['imagem']);
+    if (!$resultado['sucesso']) {
+        redirecionar('gerenciar_produtos.php', $resultado['mensagem'], 'erro');
+    }
+    $imagem = $resultado['caminho'];
+
+    $stmt = $conn->prepare(
+        "INSERT INTO produtos (nome, descricao, preco, categoria, imagem) VALUES (?, ?, ?, ?, ?)"
+    );
     $stmt->bind_param("ssdss", $nome, $descricao, $preco, $categoria, $imagem);
     $stmt->execute();
+    $stmt->close();
     redirecionar('gerenciar_produtos.php', 'Produto adicionado com sucesso!');
 }
 
+// ── EDITAR PRODUTO ───────────────────────────────────────────
 if (isset($_POST['editar_produto'])) {
-    $id        = (int) $_POST['id'];
-    $nome      = sanitizar_texto($_POST['nome']);
-    $descricao = sanitizar_texto($_POST['descricao']);
-    $preco     = (float) $_POST['preco'];
-    $categoria = sanitizar_texto($_POST['categoria']);
+    verificar_csrf();
+
+    $id        = (int)($_POST['id'] ?? 0);
+    $nome      = sanitizar_texto($_POST['nome']      ?? '');
+    $descricao = sanitizar_texto($_POST['descricao'] ?? '');
+    $preco     = (float)($_POST['preco'] ?? 0);
+    $categoria = sanitizar_texto($_POST['categoria'] ?? '');
     $disponivel= isset($_POST['disponivel']) ? 1 : 0;
 
-    $produto = $conn->query("SELECT imagem FROM produtos WHERE id=$id")->fetch_assoc();
-    $imagem  = $produto['imagem'];
+    $stmt = $conn->prepare("SELECT imagem FROM produtos WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $produto = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $imagem = $produto['imagem'] ?? '';
 
     if (isset($_FILES['imagem']) && $_FILES['imagem']['error'] == 0) {
         $resultado = upload_imagem($_FILES['imagem']);
@@ -47,28 +60,84 @@ if (isset($_POST['editar_produto'])) {
         }
     }
 
-    $stmt = $conn->prepare("UPDATE produtos SET nome=?, descricao=?, preco=?, categoria=?, imagem=?, disponivel=? WHERE id=?");
+    $stmt = $conn->prepare(
+        "UPDATE produtos SET nome=?, descricao=?, preco=?, categoria=?, imagem=?, disponivel=? WHERE id=?"
+    );
     $stmt->bind_param("ssdssii", $nome, $descricao, $preco, $categoria, $imagem, $disponivel, $id);
     $stmt->execute();
+    $stmt->close();
     redirecionar('gerenciar_produtos.php', 'Produto atualizado!');
 }
 
+// ── DELETAR PRODUTO ──────────────────────────────────────────
 if (isset($_GET['deletar'])) {
-    $id = (int) $_GET['deletar'];
-    $produto = $conn->query("SELECT imagem FROM produtos WHERE id=$id")->fetch_assoc();
-    if ($produto['imagem'] && file_exists($produto['imagem'])) unlink($produto['imagem']);
-    $conn->query("DELETE FROM produtos WHERE id=$id");
+    verificar_csrf(); // token via GET para confirmação
+    $id = (int)$_GET['deletar'];
+
+    $stmt = $conn->prepare("SELECT imagem FROM produtos WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $produto = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($produto && $produto['imagem'] && file_exists($produto['imagem'])) {
+        unlink($produto['imagem']);
+    }
+
+    $stmt = $conn->prepare("DELETE FROM produtos WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
     redirecionar('gerenciar_produtos.php', 'Produto removido!');
 }
 
-$busca = $_GET['busca'] ?? '';
-$where = $busca ? "WHERE nome LIKE '%$busca%' OR categoria LIKE '%$busca%'" : '';
-$produtos = $conn->query("SELECT * FROM produtos $where ORDER BY nome")->fetch_all(MYSQLI_ASSOC);
+// ── LISTAGEM COM BUSCA E PAGINAÇÃO ───────────────────────────
+$busca    = $_GET['busca'] ?? '';
+$pagina   = max(1, (int)($_GET['pagina'] ?? 1));
+$por_pag  = 20;
+$offset   = ($pagina - 1) * $por_pag;
+
+if ($busca !== '') {
+    $stmt_count = $conn->prepare(
+        "SELECT COUNT(*) as t FROM produtos WHERE nome LIKE ? OR categoria LIKE ?"
+    );
+    $like = "%{$busca}%";
+    $stmt_count->bind_param("ss", $like, $like);
+    $stmt_count->execute();
+    $total_registros = (int)$stmt_count->get_result()->fetch_assoc()['t'];
+    $stmt_count->close();
+
+    $stmt = $conn->prepare(
+        "SELECT * FROM produtos WHERE nome LIKE ? OR categoria LIKE ? ORDER BY nome LIMIT ? OFFSET ?"
+    );
+    $stmt->bind_param("ssii", $like, $like, $por_pag, $offset);
+} else {
+    $stmt_count = $conn->prepare("SELECT COUNT(*) as t FROM produtos");
+    $stmt_count->execute();
+    $total_registros = (int)$stmt_count->get_result()->fetch_assoc()['t'];
+    $stmt_count->close();
+
+    $stmt = $conn->prepare("SELECT * FROM produtos ORDER BY nome LIMIT ? OFFSET ?");
+    $stmt->bind_param("ii", $por_pag, $offset);
+}
+
+$stmt->execute();
+$produtos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+$total_paginas = (int)ceil($total_registros / $por_pag);
 
 $produto_editar = null;
 if (isset($_GET['editar'])) {
-    $produto_editar = $conn->query("SELECT * FROM produtos WHERE id=" . (int) $_GET['editar'])->fetch_assoc();
+    $id_edit = (int)$_GET['editar'];
+    $stmt = $conn->prepare("SELECT * FROM produtos WHERE id = ?");
+    $stmt->bind_param("i", $id_edit);
+    $stmt->execute();
+    $produto_editar = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 }
+
+$csrf = gerar_token_csrf();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -78,6 +147,15 @@ if (isset($_GET['editar'])) {
     <title>Gerenciar Produtos - FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .paginacao { display:flex; gap:6px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+        .paginacao a, .paginacao span {
+            padding:7px 14px; border-radius:var(--radius-full); font-size:13px; font-weight:600;
+            border:2px solid var(--light-gray); text-decoration:none; color:var(--gray);
+        }
+        .paginacao a:hover { border-color:var(--primary); color:var(--primary); }
+        .paginacao .atual  { background:var(--primary); border-color:var(--primary); color:white; }
+    </style>
 </head>
 <body>
     <div class="header">
@@ -105,18 +183,20 @@ if (isset($_GET['editar'])) {
             <h2><i class="fas fa-<?= $produto_editar ? 'edit' : 'plus' ?>"></i> <?= $produto_editar ? 'Editar' : 'Adicionar' ?> Produto</h2>
 
             <form method="POST" enctype="multipart/form-data">
+                <?= campo_csrf() ?>
                 <?php if ($produto_editar): ?>
-                    <input type="hidden" name="id" value="<?= $produto_editar['id'] ?>">
+                    <input type="hidden" name="id" value="<?= (int)$produto_editar['id'] ?>">
                 <?php endif; ?>
 
                 <div class="form-grid">
                     <div class="form-group">
                         <label><i class="fas fa-pills"></i> Nome do Produto *</label>
-                        <input type="text" name="nome" value="<?= $produto_editar['nome'] ?? '' ?>" required placeholder="Ex: Dipirona 500mg">
+                        <input type="text" name="nome" value="<?= htmlspecialchars($produto_editar['nome'] ?? '') ?>" required placeholder="Ex: Dipirona 500mg">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-dollar-sign"></i> Preço (R$) *</label>
-                        <input type="number" name="preco" step="0.01" value="<?= $produto_editar['preco'] ?? '' ?>" required placeholder="0.00">
+                        <input type="number" name="preco" step="0.01" min="0.01"
+                               value="<?= htmlspecialchars($produto_editar['preco'] ?? '') ?>" required placeholder="0.00">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-tag"></i> Categoria *</label>
@@ -125,22 +205,27 @@ if (isset($_GET['editar'])) {
                             <?php
                             $cats = ['Medicamentos','Genéricos','Vitaminas','Higiene Pessoal','Dermocosméticos','Infantil','Bem-Estar','Primeiros Socorros','Ortopedia'];
                             foreach ($cats as $c): ?>
-                                <option value="<?= $c ?>" <?= (isset($produto_editar) && $produto_editar['categoria']==$c)?'selected':'' ?>><?= $c ?></option>
+                                <option value="<?= htmlspecialchars($c) ?>"
+                                    <?= (isset($produto_editar) && $produto_editar['categoria'] == $c) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($c) ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-image"></i> Imagem <?= $produto_editar ? '(opcional)' : '*' ?></label>
-                        <input type="file" name="imagem" accept="image/*" <?= $produto_editar ? '' : 'required' ?>>
+                        <input type="file" name="imagem" accept="image/jpeg,image/png,image/gif,image/webp"
+                               <?= $produto_editar ? '' : 'required' ?>>
                         <?php if ($produto_editar && $produto_editar['imagem']): ?>
-                            <img src="<?= $produto_editar['imagem'] ?>" alt="Preview" style="max-width:160px;border-radius:10px;margin-top:10px;">
+                            <img src="<?= htmlspecialchars($produto_editar['imagem']) ?>"
+                                 alt="Preview" style="max-width:160px;border-radius:10px;margin-top:10px;">
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label><i class="fas fa-align-left"></i> Descrição *</label>
-                    <textarea name="descricao" required placeholder="Indicações, composição, posologia..."><?= $produto_editar['descricao'] ?? '' ?></textarea>
+                    <textarea name="descricao" required placeholder="Indicações, composição, posologia..."><?= htmlspecialchars($produto_editar['descricao'] ?? '') ?></textarea>
                 </div>
 
                 <?php if ($produto_editar): ?>
@@ -165,18 +250,22 @@ if (isset($_GET['editar'])) {
 
         <!-- LISTA -->
         <div class="card">
-            <h2><i class="fas fa-list"></i> Produtos Cadastrados (<?= count($produtos) ?>)</h2>
+            <h2><i class="fas fa-list"></i> Produtos Cadastrados (<?= $total_registros ?>)</h2>
 
             <div class="search-bar">
                 <form method="GET" style="display:flex;gap:10px;width:100%;">
-                    <input type="text" name="busca" placeholder="Buscar produto ou categoria..." value="<?= htmlspecialchars($busca) ?>">
+                    <input type="text" name="busca" placeholder="Buscar produto ou categoria..."
+                           value="<?= htmlspecialchars($busca) ?>">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
                     <a href="gerenciar_produtos.php" class="btn btn-secondary"><i class="fas fa-sync"></i></a>
                 </form>
             </div>
 
             <?php if (empty($produtos)): ?>
-                <div class="empty" style="padding:40px;"><i class="fas fa-pills"></i><h2>Nenhum produto cadastrado</h2></div>
+                <div class="empty" style="padding:40px;">
+                    <i class="fas fa-pills"></i>
+                    <h2>Nenhum produto encontrado</h2>
+                </div>
             <?php else: ?>
                 <table class="produtos-table">
                     <thead>
@@ -189,7 +278,8 @@ if (isset($_GET['editar'])) {
                             <tr>
                                 <td>
                                     <?php if ($p['imagem'] && file_exists($p['imagem'])): ?>
-                                        <img src="<?= $p['imagem'] ?>" alt="<?= $p['nome'] ?>">
+                                        <img src="<?= htmlspecialchars($p['imagem']) ?>"
+                                             alt="<?= htmlspecialchars($p['nome']) ?>">
                                     <?php else: ?>
                                         <div style="width:56px;height:56px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:1px solid var(--light-gray);">
                                             <i class="fas fa-pills" style="color:var(--light-gray);"></i>
@@ -201,13 +291,46 @@ if (isset($_GET['editar'])) {
                                 <td><strong style="color:var(--primary);"><?= formatar_preco($p['preco']) ?></strong></td>
                                 <td><span class="badge badge-<?= $p['disponivel'] ? 'success' : 'danger' ?>"><?= $p['disponivel'] ? 'Disponível' : 'Indisponível' ?></span></td>
                                 <td>
-                                    <a href="?editar=<?= $p['id'] ?>" class="btn btn-warning" style="padding:8px 14px;font-size:13px;"><i class="fas fa-edit"></i></a>
-                                    <a href="?deletar=<?= $p['id'] ?>" class="btn btn-danger" style="padding:8px 14px;font-size:13px;" onclick="return confirm('Remover este produto?')"><i class="fas fa-trash"></i></a>
+                                    <a href="?editar=<?= $p['id'] ?>" class="btn btn-warning" style="padding:8px 14px;font-size:13px;">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="?deletar=<?= $p['id'] ?>&csrf_token=<?= urlencode($csrf) ?>"
+                                       class="btn btn-danger"
+                                       style="padding:8px 14px;font-size:13px;"
+                                       onclick="return confirm('Remover este produto?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+
+                <!-- PAGINAÇÃO -->
+                <?php if ($total_paginas > 1): ?>
+                <div class="paginacao">
+                    <?php if ($pagina > 1): ?>
+                        <a href="?pagina=<?= $pagina - 1 ?>&busca=<?= urlencode($busca) ?>">&#8592; Anterior</a>
+                    <?php endif; ?>
+
+                    <?php for ($i = max(1, $pagina - 2); $i <= min($total_paginas, $pagina + 2); $i++): ?>
+                        <?php if ($i === $pagina): ?>
+                            <span class="atual"><?= $i ?></span>
+                        <?php else: ?>
+                            <a href="?pagina=<?= $i ?>&busca=<?= urlencode($busca) ?>"><?= $i ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($pagina < $total_paginas): ?>
+                        <a href="?pagina=<?= $pagina + 1 ?>&busca=<?= urlencode($busca) ?>">Próxima &#8594;</a>
+                    <?php endif; ?>
+
+                    <span style="color:var(--gray);padding:7px 0;">
+                        Página <?= $pagina ?> de <?= $total_paginas ?>
+                        (<?= $total_registros ?> produto<?= $total_registros != 1 ? 's' : '' ?>)
+                    </span>
+                </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

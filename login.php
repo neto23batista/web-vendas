@@ -9,9 +9,20 @@ if (isset($_SESSION['usuario'])) {
 
 $erro = '';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = sanitizar_texto($_POST['email']);
-    $senha = $_POST['senha'];
+if (!isset($_SESSION['login_tentativas']))   $_SESSION['login_tentativas']   = 0;
+if (!isset($_SESSION['login_bloqueio_ate'])) $_SESSION['login_bloqueio_ate'] = 0;
+
+$bloqueado = $_SESSION['login_bloqueio_ate'] > time();
+if ($bloqueado) {
+    $restante = ceil(($_SESSION['login_bloqueio_ate'] - time()) / 60);
+    $erro = "Muitas tentativas. Tente novamente em {$restante} minuto(s).";
+}
+
+if (!$bloqueado && $_SERVER['REQUEST_METHOD'] == 'POST') {
+    verificar_csrf();
+
+    $email = sanitizar_texto($_POST['email'] ?? '');
+    $senha = $_POST['senha'] ?? '';
 
     if (empty($email) || empty($senha)) {
         $erro = 'Preencha todos os campos!';
@@ -19,18 +30,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $stmt = $conn->prepare("SELECT * FROM usuarios WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
-        $resultado = $stmt->get_result();
+        $usuario = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-        if ($resultado->num_rows > 0) {
-            $usuario = $resultado->fetch_assoc();
-            if (verificar_senha($senha, $usuario['senha'])) {
-                $_SESSION['id_usuario'] = $usuario['id'];
-                $_SESSION['usuario']    = $usuario['nome'];
-                $_SESSION['tipo']       = $usuario['tipo'];
-                redirecionar($usuario['tipo'] == 'dono' ? 'painel_dono.php' : 'index.php', 'Bem-vindo de volta, ' . $usuario['nome'] . '!');
-            }
+        if ($usuario && verificar_senha($senha, $usuario['senha'])) {
+            $_SESSION['login_tentativas']   = 0;
+            $_SESSION['login_bloqueio_ate'] = 0;
+            $_SESSION['id_usuario']         = $usuario['id'];
+            $_SESSION['usuario']            = $usuario['nome'];
+            $_SESSION['tipo']               = $usuario['tipo'];
+            redirecionar(
+                $usuario['tipo'] == 'dono' ? 'painel_dono.php' : 'index.php',
+                'Bem-vindo de volta, ' . $usuario['nome'] . '!'
+            );
         }
-        $erro = 'E-mail ou senha incorretos!';
+
+        $_SESSION['login_tentativas']++;
+        if ($_SESSION['login_tentativas'] >= 5) {
+            $_SESSION['login_bloqueio_ate'] = time() + 900;
+            $_SESSION['login_tentativas']   = 0;
+            $erro = 'Muitas tentativas. Conta bloqueada por 15 minutos.';
+        } else {
+            $restantes = 5 - $_SESSION['login_tentativas'];
+            $erro = "E-mail ou senha incorretos! ({$restantes} tentativa(s) restante(s))";
+        }
     }
 }
 ?>
@@ -65,22 +88,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <?php unset($_SESSION['sucesso']); ?>
         <?php endif; ?>
 
+        <?php if (!$bloqueado): ?>
         <form method="POST">
+            <?= campo_csrf() ?>
             <div class="form-group">
                 <label><i class="fas fa-envelope"></i> E-mail</label>
                 <input type="email" name="email" required placeholder="seu@email.com"
-                       value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
+                       value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>"
+                       autocomplete="email">
             </div>
-
             <div class="form-group">
-                <label><i class="fas fa-lock"></i> Senha</label>
-                <input type="password" name="senha" required placeholder="Sua senha">
+                <label style="display:flex;justify-content:space-between;align-items:center;">
+                    <span><i class="fas fa-lock"></i> Senha</span>
+                    <a href="esqueci_senha.php"
+                       style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:500;">
+                        Esqueci minha senha
+                    </a>
+                </label>
+                <input type="password" name="senha" required placeholder="Sua senha"
+                       autocomplete="current-password">
             </div>
-
             <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
                 <i class="fas fa-sign-in-alt"></i> Entrar
             </button>
         </form>
+        <?php endif; ?>
 
         <div class="links">
             <p>Não tem conta? <a href="cadastro.php">Cadastre-se grátis</a></p>

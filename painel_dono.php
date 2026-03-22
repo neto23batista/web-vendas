@@ -5,28 +5,70 @@ include "helpers.php";
 
 verificar_login('dono');
 
+// Fallback PHP para atualização de status (o caminho principal é via AJAX)
 if (isset($_POST['atualizar_status'])) {
-    $id_pedido = (int) $_POST['id_pedido'];
-    $status    = $_POST['status'];
-    $conn->query("UPDATE pedidos SET status='$status' WHERE id=$id_pedido");
+    verificar_csrf();
+    $id_pedido = (int)$_POST['id_pedido'];
+    $status    = $_POST['status'] ?? '';
+    $validos   = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
+    if (in_array($status, $validos, true)) {
+        $stmt = $conn->prepare("UPDATE pedidos SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $id_pedido);
+        $stmt->execute();
+        $stmt->close();
+    }
     redirecionar('painel_dono.php', 'Status atualizado!');
 }
 
-$stats = $conn->query("SELECT COUNT(DISTINCT id) as total_pedidos, SUM(total) as faturamento_total, SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pedidos_pendentes FROM pedidos")->fetch_assoc();
-$total_produtos = $conn->query("SELECT COUNT(*) as t FROM produtos WHERE disponivel=1")->fetch_assoc()['t'];
-$total_clientes = $conn->query("SELECT COUNT(*) as t FROM usuarios WHERE tipo='cliente'")->fetch_assoc()['t'];
+// ── STATS ────────────────────────────────────────────────────
+$stats = $conn->query(
+    "SELECT COUNT(DISTINCT id) as total_pedidos,
+            SUM(total) as faturamento_total,
+            SUM(CASE WHEN status='pendente' THEN 1 ELSE 0 END) as pedidos_pendentes
+     FROM pedidos"
+)->fetch_assoc();
 
-$pedidos = $conn->query("
-    SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
-    FROM pedidos p
-    JOIN usuarios u ON p.id_cliente = u.id
-    ORDER BY p.criado_em DESC
-    LIMIT 20
-")->fetch_all(MYSQLI_ASSOC);
+$total_produtos = $conn->query(
+    "SELECT COUNT(*) as t FROM produtos WHERE disponivel=1"
+)->fetch_assoc()['t'];
+
+$total_clientes = $conn->query(
+    "SELECT COUNT(*) as t FROM usuarios WHERE tipo='cliente'"
+)->fetch_assoc()['t'];
+
+// ── PEDIDOS (página inicial — o AJAX atualiza depois) ────────
+$pagina  = max(1, (int)($_GET['pagina'] ?? 1));
+$por_pag = 20;
+$offset  = ($pagina - 1) * $por_pag;
+
+$total_pedidos_db = (int)$conn->query("SELECT COUNT(*) as t FROM pedidos")->fetch_assoc()['t'];
+$total_paginas    = (int)ceil($total_pedidos_db / $por_pag);
+
+$stmt = $conn->prepare(
+    "SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
+     FROM pedidos p
+     JOIN usuarios u ON p.id_cliente = u.id
+     ORDER BY p.criado_em DESC
+     LIMIT ? OFFSET ?"
+);
+$stmt->bind_param("ii", $por_pag, $offset);
+$stmt->execute();
+$pedidos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 foreach ($pedidos as &$pedido) {
-    $itens = $conn->query("SELECT pi.*, pr.nome as produto_nome FROM pedido_itens pi JOIN produtos pr ON pi.id_produto = pr.id WHERE pi.id_pedido = {$pedido['id']}")->fetch_all(MYSQLI_ASSOC);
-    $pedido['itens'] = $itens; $pedido['total_itens'] = count($itens);
+    $stmt_i = $conn->prepare(
+        "SELECT pi.*, pr.nome as produto_nome
+         FROM pedido_itens pi
+         JOIN produtos pr ON pi.id_produto = pr.id
+         WHERE pi.id_pedido = ?"
+    );
+    $stmt_i->bind_param("i", $pedido['id']);
+    $stmt_i->execute();
+    $itens = $stmt_i->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_i->close();
+    $pedido['itens']       = $itens;
+    $pedido['total_itens'] = count($itens);
 }
 unset($pedido);
 
@@ -40,6 +82,15 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
     <title>Painel Admin - FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <style>
+        .paginacao { display:flex; gap:6px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+        .paginacao a, .paginacao span {
+            padding:7px 14px; border-radius:var(--radius-full); font-size:13px; font-weight:600;
+            border:2px solid var(--light-gray); text-decoration:none; color:var(--gray);
+        }
+        .paginacao a:hover { border-color:var(--primary); color:var(--primary); }
+        .paginacao .atual  { background:var(--primary); border-color:var(--primary); color:white; }
+    </style>
 </head>
 <body>
     <div class="header">
@@ -48,23 +99,27 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 <div class="logo-icon"><i class="fas fa-prescription-bottle-medical"></i></div>
                 Farma<span>Vida</span>
                 <span style="font-size:13px;color:var(--gray);font-weight:500;margin-left:4px;">Admin</span>
-                <button onclick="atualizarPedidos(); atualizarStats();" class="btn btn-secondary" style="margin-left:12px;padding:7px 14px;font-size:12px;">
+                <button onclick="atualizarPedidos(); atualizarStats();" class="btn btn-secondary"
+                        style="margin-left:12px;padding:7px 14px;font-size:12px;">
                     <i class="fas fa-sync-alt"></i> Atualizar
                 </button>
                 <span class="auto-update-badge" style="margin-left:8px;"><i class="fas fa-clock"></i> 30s</span>
             </div>
             <div class="nav-buttons">
-                <a href="relatorios.php" class="btn btn-info"><i class="fas fa-chart-line"></i> Relatórios</a>
-                <a href="nfe.php" class="btn btn-secondary"><i class="fas fa-file-invoice"></i> NF-e</a>
-                <a href="erp.php" class="btn btn-secondary"><i class="fas fa-plug"></i> ERP</a>
-                <a href="gerenciar_produtos.php" class="btn btn-success"><i class="fas fa-boxes"></i> Produtos</a>
-                <a href="estoque.php" class="btn btn-primary" id="btn-estoque" style="position:relative;">
+                <a href="relatorios.php"          class="btn btn-info"     ><i class="fas fa-chart-line"></i> Relatórios</a>
+                <a href="nfe.php"                 class="btn btn-secondary"><i class="fas fa-file-invoice"></i> NF-e</a>
+                <a href="erp.php"                 class="btn btn-secondary"><i class="fas fa-plug"></i> ERP</a>
+                <a href="gerenciar_produtos.php"  class="btn btn-success"  ><i class="fas fa-boxes"></i> Produtos</a>
+                <a href="estoque.php"             class="btn btn-primary"  id="btn-estoque" style="position:relative;">
                     <i class="fas fa-boxes-stacked"></i> Estoque
                     <span class="badge-num" id="estoque-alert-badge" style="display:none;background:#f59e0b;"></span>
                 </a>
-                <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning" onclick="return confirm('Limpar pedidos finalizados?')"><i class="fas fa-trash-alt"></i></a>
-                <a href="index.php" class="btn btn-secondary"><i class="fas fa-store"></i></a>
-                <a href="logout.php" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i></a>
+                <a href="limpar_pedidos_antigos.php?executar=1" class="btn btn-warning"
+                   onclick="return confirm('Limpar pedidos finalizados?')">
+                    <i class="fas fa-trash-alt"></i>
+                </a>
+                <a href="index.php"   class="btn btn-secondary"><i class="fas fa-store"></i></a>
+                <a href="logout.php"  class="btn btn-danger"   ><i class="fas fa-sign-out-alt"></i></a>
             </div>
         </div>
     </div>
@@ -75,7 +130,6 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             <p style="color:var(--gray);">Bem-vindo, <?= htmlspecialchars($_SESSION['usuario']) ?>!</p>
         </div>
 
-        <!-- ALERTA DE ESTOQUE (atualizado por AJAX) -->
         <div id="estoque-alert-banner" style="display:none;"></div>
 
         <?php if (isset($_SESSION['sucesso'])): ?>
@@ -114,14 +168,15 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
 
         <!-- PEDIDOS -->
         <div class="card">
-            <h2><i class="fas fa-clipboard-list"></i> Pedidos Recentes</h2>
+            <h2><i class="fas fa-clipboard-list"></i> Pedidos</h2>
 
             <div id="pedidos-container">
                 <?php if (empty($pedidos)): ?>
                     <div class="empty"><i class="fas fa-receipt"></i><h2>Nenhum pedido ainda</h2></div>
                 <?php else: ?>
                     <?php foreach ($pedidos as $pedido): ?>
-                        <div class="pedido <?= $pedido['conta_solicitada'] == 1 ? 'pedido-conta-solicitada' : '' ?>" id="pedido-<?= $pedido['id'] ?>">
+                        <div class="pedido <?= $pedido['conta_solicitada'] == 1 ? 'pedido-conta-solicitada' : '' ?>"
+                             id="pedido-<?= $pedido['id'] ?>">
                             <div class="pedido-header">
                                 <div style="flex:1;">
                                     <?php if ($pedido['conta_solicitada'] == 1): ?>
@@ -132,19 +187,20 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                     <div class="pedido-numero">Pedido #<?= $pedido['id'] ?></div>
                                     <?php $is_delivery = strpos($pedido['observacoes'] ?? '', 'DELIVERY') !== false; ?>
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                                    <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;<?= $is_delivery ? 'background:#e6f0ff;color:#0052cc;' : 'background:#e3fcef;color:#006644;' ?>">
-                                        <i class="fas fa-<?= $is_delivery ? 'motorcycle' : 'store-alt' ?>"></i>
-                                        <?= $is_delivery ? 'Delivery' : 'Retirada no Local' ?>
-                                    </span>
-                                    <?php if (($pedido['forma_pagamento'] ?? '') === 'app'): ?>
-                                        <?php
-                                        $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em análise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
-                                        $pg = $pg_cores[$pedido['pagamento_status'] ?? 'pendente'] ?? $pg_cores['pendente'];
-                                        ?>
-                                        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:<?= $pg[0] ?>1a;color:<?= $pg[0] ?>;">
-                                            <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> · MP
+                                        <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;<?= $is_delivery ? 'background:#e6f0ff;color:#0052cc;' : 'background:#e3fcef;color:#006644;' ?>">
+                                            <i class="fas fa-<?= $is_delivery ? 'motorcycle' : 'store-alt' ?>"></i>
+                                            <?= $is_delivery ? 'Delivery' : 'Retirada no Local' ?>
                                         </span>
-                                    <?php endif; ?></div>
+                                        <?php if (($pedido['forma_pagamento'] ?? '') === 'app'): ?>
+                                            <?php
+                                            $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em análise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
+                                            $pg = $pg_cores[$pedido['pagamento_status'] ?? 'pendente'] ?? $pg_cores['pendente'];
+                                            ?>
+                                            <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:<?= $pg[0] ?>1a;color:<?= $pg[0] ?>;">
+                                                <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> · MP
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                     <div class="pedido-info">
                                         <strong><i class="fas fa-user"></i></strong> <?= htmlspecialchars($pedido['cliente_nome']) ?><br>
                                         <?php if ($pedido['telefone']): ?><strong><i class="fas fa-phone"></i></strong> <?= htmlspecialchars($pedido['telefone']) ?><br><?php endif; ?>
@@ -170,25 +226,44 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 </div>
 
                                 <div class="status-form">
-                                    <?php $is_delivery = strpos($pedido['observacoes'] ?? '', 'DELIVERY') !== false; ?>
-                                    <select id="status-<?= $pedido['id'] ?>" onchange="atualizarStatus(<?= $pedido['id'] ?>, this.value)">
-                                        <option value="pendente"   <?= $pedido['status']=='pendente'   ? 'selected' : '' ?>>Aguardando</option>
-                                        <option value="preparando" <?= $pedido['status']=='preparando' ? 'selected' : '' ?>>Separando</option>
-                                        <option value="pronto"     <?= $pedido['status']=='pronto'     ? 'selected' : '' ?>><?= $is_delivery ? 'Saiu para entrega' : 'Pronto p/ Retirada' ?></option>
-                                        <?php if ($is_delivery): ?>
-                                            <option value="entregue" <?= $pedido['status']=='entregue' ? 'selected' : '' ?>>Entregue</option>
-                                        <?php else: ?>
-                                            <option value="entregue" <?= $pedido['status']=='entregue' ? 'selected' : '' ?>>Retirado</option>
-                                        <?php endif; ?>
-                                        <option value="cancelado"  <?= $pedido['status']=='cancelado'  ? 'selected' : '' ?>>Cancelado</option>
+                                    <select id="status-<?= $pedido['id'] ?>"
+                                            onchange="atualizarStatus(<?= $pedido['id'] ?>, this.value)">
+                                        <option value="pendente"   <?= $pedido['status']=='pendente'  ?'selected':'' ?>>Aguardando</option>
+                                        <option value="preparando" <?= $pedido['status']=='preparando'?'selected':'' ?>>Separando</option>
+                                        <option value="pronto"     <?= $pedido['status']=='pronto'    ?'selected':'' ?>><?= $is_delivery ? 'Saiu p/ entrega' : 'Pronto p/ Retirada' ?></option>
+                                        <option value="entregue"   <?= $pedido['status']=='entregue'  ?'selected':'' ?>><?= $is_delivery ? 'Entregue' : 'Retirado' ?></option>
+                                        <option value="cancelado"  <?= $pedido['status']=='cancelado' ?'selected':'' ?>>Cancelado</option>
                                     </select>
-                                    <a href="imprimir_pedido.php?id=<?= $pedido['id'] ?>" target="_blank" class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
+                                    <a href="imprimir_pedido.php?id=<?= $pedido['id'] ?>" target="_blank"
+                                       class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
                                         <i class="fas fa-print"></i> Nota
                                     </a>
                                 </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
+
+                    <!-- PAGINAÇÃO -->
+                    <?php if ($total_paginas > 1): ?>
+                    <div class="paginacao">
+                        <?php if ($pagina > 1): ?>
+                            <a href="?pagina=<?= $pagina - 1 ?>">&#8592; Anterior</a>
+                        <?php endif; ?>
+                        <?php for ($i = max(1, $pagina - 2); $i <= min($total_paginas, $pagina + 2); $i++): ?>
+                            <?php if ($i === $pagina): ?>
+                                <span class="atual"><?= $i ?></span>
+                            <?php else: ?>
+                                <a href="?pagina=<?= $i ?>"><?= $i ?></a>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                        <?php if ($pagina < $total_paginas): ?>
+                            <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
+                        <?php endif; ?>
+                        <span style="color:var(--gray);padding:7px 0;">
+                            Página <?= $pagina ?> de <?= $total_paginas ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -205,9 +280,13 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
 
         async function atualizarStatus(idPedido, status) {
             try {
-                const fd = new FormData(); fd.append('action','atualizar_status'); fd.append('id_pedido',idPedido); fd.append('status',status);
-                const data = await (await fetch('ajax_handler.php',{method:'POST',body:fd})).json();
+                const fd = new FormData();
+                fd.append('action','atualizar_status');
+                fd.append('id_pedido', idPedido);
+                fd.append('status', status);
+                const data = await (await fetch('ajax_handler.php', {method:'POST', body:fd})).json();
                 if (data.sucesso) { mostrarToast('Status atualizado!'); atualizarStats(); }
+                else mostrarToast(data.erro || 'Erro', 'error');
             } catch(e) { mostrarToast('Erro de conexão','error'); }
         }
 
@@ -269,22 +348,23 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 <select id="status-${pedido.id}" onchange="atualizarStatus(${pedido.id}, this.value)">
                                     <option value="pendente"   ${pedido.status==='pendente'  ?'selected':''}>Aguardando</option>
                                     <option value="preparando" ${pedido.status==='preparando'?'selected':''}>Separando</option>
-                                    <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>${isDelivery ? 'Saiu para entrega' : 'Pronto p/ Retirada'}</option>
+                                    <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>${isDelivery ? 'Saiu p/ entrega' : 'Pronto p/ Retirada'}</option>
                                     <option value="entregue"   ${pedido.status==='entregue'  ?'selected':''}>${isDelivery ? 'Entregue' : 'Retirado'}</option>
                                     <option value="cancelado"  ${pedido.status==='cancelado' ?'selected':''}>Cancelado</option>
                                 </select>
-                                <a href="imprimir_pedido.php?id=${pedido.id}" target="_blank" class="btn btn-primary" style="padding:10px 18px;text-decoration:none;"><i class="fas fa-print"></i> Nota</a>
+                                <a href="imprimir_pedido.php?id=${pedido.id}" target="_blank"
+                                   class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
+                                    <i class="fas fa-print"></i> Nota
+                                </a>
                             </div>
                         </div>
                     </div>`;
                 });
 
                 container.innerHTML = html;
-                if (novosPedidos) { mostrarToast('Novo pedido recebido!'); }
+                if (novosPedidos) mostrarToast('Novo pedido recebido!');
             } catch(e) { console.error(e); }
         }
-
-        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 
         async function verificarEstoque() {
             try {
@@ -294,25 +374,19 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 const total  = (data.zerados || 0) + (data.baixos || 0);
 
                 if (total > 0) {
-                    // Badge no botão — igual ao carrinho
                     badge.textContent   = total;
                     badge.style.display = 'flex';
-
-                    // Banner com lista dos críticos
                     let itensHtml = '';
                     (data.criticos || []).forEach(p => {
                         const cor = p.estoque_atual === 0 ? '#dc2626' : '#d97706';
                         itensHtml += `<span style="background:${cor}22;color:${cor};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;">${p.nome}: ${p.estoque_atual} un</span>`;
                     });
-
                     banner.style.display = 'block';
                     banner.innerHTML = `
                         <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px;">
                             <i class="fas fa-triangle-exclamation" style="font-size:22px;color:#d97706;flex-shrink:0;margin-top:2px;"></i>
                             <div style="flex:1;">
-                                <strong style="color:#92400e;display:block;margin-bottom:8px;">
-                                    ⚠️ Estoque crítico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mínimo
-                                </strong>
+                                <strong style="color:#92400e;display:block;margin-bottom:8px;">⚠️ Estoque crítico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mínimo</strong>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">${itensHtml}</div>
                             </div>
                             <a href="estoque.php" class="btn btn-warning" style="padding:8px 16px;font-size:13px;flex-shrink:0;">
@@ -323,11 +397,11 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                     badge.style.display  = 'none';
                     banner.style.display = 'none';
                 }
-            } catch(e) { console.error('Erro ao verificar estoque:', e); }
+            } catch(e) {}
         }
 
         setInterval(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 30000);
-        setTimeout(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 1000);
+        setTimeout(() => { atualizarStats(); verificarEstoque(); }, 1000);
     </script>
 </body>
 </html>
