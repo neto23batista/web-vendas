@@ -5,30 +5,43 @@ include "helpers.php";
 
 verificar_login('cliente');
 
-$id_cliente = $_SESSION['id_usuario'];
+$id_cliente = (int)$_SESSION['id_usuario'];
 
 if (isset($_POST['atualizar_dados'])) {
-    $nome     = sanitizar_texto($_POST['nome']);
-    $telefone = sanitizar_texto($_POST['telefone']);
-    $endereco = sanitizar_texto($_POST['endereco']);
+    verificar_csrf();
+
+    $nome     = sanitizar_texto($_POST['nome']     ?? '');
+    $telefone = sanitizar_texto($_POST['telefone'] ?? '');
+    $endereco = sanitizar_texto($_POST['endereco'] ?? '');
+
     $stmt = $conn->prepare("UPDATE usuarios SET nome=?, telefone=?, endereco=? WHERE id=?");
     $stmt->bind_param("sssi", $nome, $telefone, $endereco, $id_cliente);
     $stmt->execute();
+    $stmt->close();
+
     $_SESSION['usuario'] = $nome;
     redirecionar('painel_cliente.php', 'Dados atualizados com sucesso!');
 }
 
-$cliente = $conn->query("SELECT * FROM usuarios WHERE id=$id_cliente")->fetch_assoc();
+$stmt = $conn->prepare("SELECT * FROM usuarios WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $id_cliente);
+$stmt->execute();
+$cliente = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-$pedidos = $conn->query("
-    SELECT p.*, COUNT(pi.id) as total_itens
-    FROM pedidos p
-    LEFT JOIN pedido_itens pi ON p.id = pi.id_pedido
-    WHERE p.id_cliente = $id_cliente
-    AND p.status NOT IN ('entregue', 'cancelado')
-    GROUP BY p.id
-    ORDER BY p.criado_em DESC
-")->fetch_all(MYSQLI_ASSOC);
+$stmt = $conn->prepare(
+    "SELECT p.*, COUNT(pi.id) as total_itens
+     FROM pedidos p
+     LEFT JOIN pedido_itens pi ON p.id = pi.id_pedido
+     WHERE p.id_cliente = ?
+       AND p.status NOT IN ('entregue', 'cancelado')
+     GROUP BY p.id
+     ORDER BY p.criado_em DESC"
+);
+$stmt->bind_param("i", $id_cliente);
+$stmt->execute();
+$pedidos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 $status_cores  = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b981','entregue'=>'#6b7280','cancelado'=>'#ef4444'];
 $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'PRONTO','entregue'=>'ENTREGUE','cancelado'=>'CANCELADO'];
@@ -88,7 +101,6 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                     <i class="fas fa-info-circle"></i>
                     Pedidos entregues e cancelados são ocultados automaticamente para manter seu painel organizado.
                 </div>
-
                 <div id="pedidos-container">
                     <?php if (empty($pedidos)): ?>
                         <div class="empty">
@@ -114,7 +126,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                                         <span class="status-badge" style="background:<?= $status_cores[$pedido['status']] ?>">
                                             <?= $status_labels[$pedido['status']] ?>
                                         </span>
-                                        <?php if ($pedido['status'] == 'pronto'): ?>
+                                        <?php if ($pedido['status'] === 'pronto'): ?>
                                             <button onclick="pedirConta(<?= $pedido['id'] ?>)" class="btn btn-success" style="padding:8px 16px;font-size:13px;">
                                                 <i class="fas fa-cash-register"></i> Pagar
                                             </button>
@@ -136,6 +148,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
             <!-- ABA DADOS -->
             <div id="dados" class="tab-content">
                 <form method="POST">
+                    <?= campo_csrf() ?>
                     <div class="form-group">
                         <label><i class="fas fa-user"></i> Nome Completo</label>
                         <input type="text" name="nome" value="<?= htmlspecialchars($cliente['nome']) ?>" required>
@@ -147,11 +160,11 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-phone"></i> Telefone / WhatsApp</label>
-                        <input type="tel" name="telefone" value="<?= htmlspecialchars($cliente['telefone']) ?>" placeholder="(00) 00000-0000">
+                        <input type="tel" name="telefone" value="<?= htmlspecialchars($cliente['telefone'] ?? '') ?>" placeholder="(00) 00000-0000">
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-map-marker-alt"></i> Endereço de Entrega</label>
-                        <textarea name="endereco" rows="3" placeholder="Rua, número, bairro, cidade"><?= htmlspecialchars($cliente['endereco']) ?></textarea>
+                        <textarea name="endereco" rows="3" placeholder="Rua, número, bairro, cidade"><?= htmlspecialchars($cliente['endereco'] ?? '') ?></textarea>
                     </div>
                     <button type="submit" name="atualizar_dados" class="btn btn-success">
                         <i class="fas fa-save"></i> Salvar Alterações
@@ -193,18 +206,15 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 if (!data.pedidos) return;
                 const container = document.getElementById('pedidos-container');
                 const ativos = data.pedidos.filter(p => p.status !== 'entregue' && p.status !== 'cancelado');
-
                 if (ativos.length === 0) {
                     container.innerHTML = `<div class="empty"><i class="fas fa-clipboard"></i><h2>Nenhum pedido ativo</h2><p>Navegue pela farmácia!</p><a href="index.php" class="btn btn-primary"><i class="fas fa-pills"></i> Ver Produtos</a></div>`;
                     return;
                 }
-
                 let html = '';
                 ativos.forEach(p => {
                     const statusAntigo = statusAtual[p.id];
                     if (statusAntigo && statusAntigo !== p.status) mostrarToast(`Pedido #${p.id}: ${statusLabels[p.status]}`);
                     statusAtual[p.id] = p.status;
-
                     html += `<div class="pedido" id="pedido-${p.id}">
                         <div class="pedido-header">
                             <div>
@@ -229,7 +239,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 const data = await (await fetch('ajax_handler.php?action=contar_carrinho')).json();
                 const badge = document.getElementById('cart-count');
                 if (data.count > 0) { badge.textContent = data.count; badge.style.display = 'flex'; }
-                else { badge.style.display = 'none'; }
+                else badge.style.display = 'none';
             } catch(e) {}
         }
 
