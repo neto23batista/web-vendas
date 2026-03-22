@@ -86,7 +86,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
         .paginacao { display:flex; gap:6px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
         .paginacao a, .paginacao span {
             padding:7px 14px; border-radius:var(--radius-full); font-size:13px; font-weight:600;
-            border:2px solid var(--light-gray); text-decoration:none; color:var(--gray);
+            border:1px solid var(--border); text-decoration:none; color:var(--text2);
         }
         .paginacao a:hover { border-color:var(--primary); color:var(--primary); }
         .paginacao .atual  { background:var(--primary); border-color:var(--primary); color:white; }
@@ -98,7 +98,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             <div class="logo" style="cursor:default;">
                 <div class="logo-icon"><i class="fas fa-prescription-bottle-medical"></i></div>
                 Farma<span>Vida</span>
-                <span style="font-size:13px;color:var(--gray);font-weight:500;margin-left:4px;">Admin</span>
+                <span style="font-size:13px;color:var(--text2);font-weight:500;margin-left:4px;">Admin</span>
                 <button onclick="atualizarPedidos(); atualizarStats();" class="btn btn-secondary"
                         style="margin-left:12px;padding:7px 14px;font-size:12px;">
                     <i class="fas fa-sync-alt"></i> Atualizar
@@ -127,7 +127,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
     <div class="container">
         <div class="card">
             <h1><i class="fas fa-tachometer-alt" style="color:var(--primary);"></i> Painel Administrativo</h1>
-            <p style="color:var(--gray);">Bem-vindo, <?= htmlspecialchars($_SESSION['usuario']) ?>!</p>
+            <p style="color:var(--text2);">Bem-vindo, <?= htmlspecialchars($_SESSION['usuario']) ?>!</p>
         </div>
 
         <div id="estoque-alert-banner" style="display:none;"></div>
@@ -187,7 +187,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                     <div class="pedido-numero">Pedido #<?= $pedido['id'] ?></div>
                                     <?php $is_delivery = strpos($pedido['observacoes'] ?? '', 'DELIVERY') !== false; ?>
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-                                        <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;<?= $is_delivery ? 'background:#e6f0ff;color:#0052cc;' : 'background:#e3fcef;color:#006644;' ?>">
+                                        <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;<?= $is_delivery ? 'background:rgba(77,156,255,.12);color:var(--secondary);' : 'background:rgba(0,229,160,.1);color:var(--primary);' ?>">
                                             <i class="fas fa-<?= $is_delivery ? 'motorcycle' : 'store-alt' ?>"></i>
                                             <?= $is_delivery ? 'Delivery' : 'Retirada no Local' ?>
                                         </span>
@@ -259,7 +259,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                         <?php if ($pagina < $total_paginas): ?>
                             <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
                         <?php endif; ?>
-                        <span style="color:var(--gray);padding:7px 0;">
+                        <span style="color:var(--text2);padding:7px 0;">
                             Página <?= $pagina ?> de <?= $total_paginas ?>
                         </span>
                     </div>
@@ -331,7 +331,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 ${pedido.conta_solicitada==1?`<div style="background:var(--warning);color:#fff;padding:7px 14px;border-radius:var(--radius-full);margin-bottom:10px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:13px;"><i class="fas fa-cash-register"></i> CLIENTE QUER PAGAR!</div>`:''}
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                                     <div class="pedido-numero" style="margin-bottom:0;">Pedido #${pedido.id}</div>
-                                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;${isDelivery?'background:#e6f0ff;color:#0052cc;':'background:#e3fcef;color:#006644;'}">
+                                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;${isDelivery?'background:rgba(77,156,255,.12);color:var(--secondary);':'background:rgba(0,229,160,.1);color:var(--primary);'}">
                                         ${isDelivery?'<i class="fas fa-motorcycle"></i> Delivery':'<i class="fas fa-store-alt"></i> Retirada'}
                                     </span>
                                 </div>
