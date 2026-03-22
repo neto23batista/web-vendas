@@ -383,15 +383,17 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                     });
                     banner.style.display = 'block';
                     banner.innerHTML = `
-                        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px;">
-                            <i class="fas fa-triangle-exclamation" style="font-size:22px;color:#d97706;flex-shrink:0;margin-top:2px;"></i>
-                            <div style="flex:1;">
-                                <strong style="color:#92400e;display:block;margin-bottom:8px;">⚠️ Estoque crítico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mínimo</strong>
-                                <div style="display:flex;gap:8px;flex-wrap:wrap;">${itensHtml}</div>
+                        <div style="background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:16px;">
+                            <div class="alert-estoque-inner" style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+                                <i class="fas fa-triangle-exclamation" style="font-size:18px;color:var(--warning);flex-shrink:0;margin-top:2px;"></i>
+                                <div style="flex:1;min-width:160px;">
+                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crítico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mínimo</strong>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap;">${itensHtml}</div>
+                                </div>
+                                <a href="estoque.php" class="btn btn-warning" style="font-size:12px;padding:0 14px;min-height:38px;flex-shrink:0;">
+                                    <i class="fas fa-boxes-stacked"></i> Gerenciar Estoque
+                                </a>
                             </div>
-                            <a href="estoque.php" class="btn btn-warning" style="padding:8px 16px;font-size:13px;flex-shrink:0;">
-                                <i class="fas fa-boxes-stacked"></i> Gerenciar Estoque
-                            </a>
                         </div>`;
                 } else {
                     badge.style.display  = 'none';

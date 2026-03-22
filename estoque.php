@@ -142,7 +142,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Controle de Estoque – FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1774207549">
     <style>
         .est-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--radius-full);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
         .est-ok     {background:rgba(0,229,160,.1);color:var(--primary);border:1px solid rgba(0,229,160,.2);}

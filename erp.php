@@ -184,7 +184,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Integração ERP – FarmaVida</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=1774207549">
 <style>
 .endpoint-card{background:var(--bg);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px;border-left:4px solid var(--primary);display:flex;align-items:center;gap:14px;}
 .method-badge{padding:4px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:800;color:white;min-width:48px;text-align:center;}

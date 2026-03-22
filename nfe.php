@@ -230,7 +230,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NF-e – FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1774207549">
     <style>
         .danfe { max-width:860px; margin:0 auto; background:white; border:2px solid #000; font-family:'Courier New',monospace; font-size:11px; }
         .danfe-header { display:grid; grid-template-columns:180px 1fr 200px; border-bottom:2px solid #000; }

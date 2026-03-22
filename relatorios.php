@@ -35,7 +35,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Relatórios – FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1774207549">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <style>
         .periodo-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
