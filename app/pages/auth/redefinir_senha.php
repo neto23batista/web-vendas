@@ -8,7 +8,7 @@ if (isset($_SESSION['usuario'])) redirecionar('index.php');
 
 if (schema_componentes_pendentes($conn, ['auth'])) {
     http_response_code(503);
-    die('Redefinicao de senha temporariamente indisponivel. Execute as migracoes pendentes no painel administrativo.');
+    die('Redefinição de senha temporariamente indisponível. Execute as migrações pendentes no painel administrativo.');
 }
 
 $token = trim($_GET['token'] ?? $_POST['token'] ?? '');

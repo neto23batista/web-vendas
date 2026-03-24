@@ -32,9 +32,14 @@ $mais_pedidos = $conn->query(
      LIMIT 6"
 )->fetch_all(MYSQLI_ASSOC);
 
-$cart_count = $usuario_id
-    ? (int)$conn->query("SELECT COUNT(*) as t FROM carrinho WHERE id_cliente=$usuario_id")->fetch_assoc()['t']
-    : 0;
+$cart_count = 0;
+if ($usuario_id) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as t FROM carrinho WHERE id_cliente = ?");
+    $stmt->bind_param("i", $usuario_id);
+    $stmt->execute();
+    $cart_count = (int)($stmt->get_result()->fetch_assoc()['t'] ?? 0);
+    $stmt->close();
+}
 
  
 $cart_items = [];

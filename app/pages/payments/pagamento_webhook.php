@@ -4,6 +4,7 @@
  
  
  
+require_once FARMAVIDA_ROOT . '/app/core/bootstrap.php';
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/integrations/mercadopago_config.php';
 
@@ -17,13 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $body  = file_get_contents('php://input');
 $dados = json_decode($body, true);
 
-@mkdir('logs', 0755, true);
+$logsDir = FARMAVIDA_ROOT . '/logs';
+@mkdir($logsDir, 0755, true);
+$logWebhookPath = $logsDir . '/mp_webhook.log';
+$logPagamentosPath = $logsDir . '/mp_pagamentos.log';
 $log_webhook = date('Y-m-d H:i:s')
     . " | tipo=" . ($dados['type'] ?? $_GET['topic'] ?? 'desconhecido')
     . " | id=" . ($dados['data']['id'] ?? $_GET['id'] ?? 'n/a')
     . " | origem=" . ($_SERVER['REMOTE_ADDR'] ?? 'n/a')
     . "\n";
-file_put_contents('logs/mp_webhook.log', $log_webhook, FILE_APPEND);
+file_put_contents($logWebhookPath, $log_webhook, FILE_APPEND);
 
  
 $tipo = $dados['type'] ?? $_GET['topic'] ?? '';
@@ -74,37 +78,57 @@ if ($tipo === 'payment') {
      
     $id_pedido = 0;
     if ($external_ref > 0) {
-        $row = $conn->query("SELECT id FROM pedidos WHERE id=$external_ref AND forma_pagamento='app'")->fetch_assoc();
-        if ($row) $id_pedido = $row['id'];
+        $stmt = $conn->prepare("SELECT id FROM pedidos WHERE id = ? AND forma_pagamento = 'app'");
+        $stmt->bind_param("i", $external_ref);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($row) {
+            $id_pedido = (int)$row['id'];
+        }
     }
     if (!$id_pedido && $preference_id) {
-        $pref_esc = $conn->real_escape_string($preference_id);
-        $row = $conn->query("SELECT id FROM pedidos WHERE mp_preference_id='$pref_esc'")->fetch_assoc();
-        if ($row) $id_pedido = $row['id'];
+        $stmt = $conn->prepare("SELECT id FROM pedidos WHERE mp_preference_id = ?");
+        $stmt->bind_param("s", $preference_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($row) {
+            $id_pedido = (int)$row['id'];
+        }
     }
 
     if ($id_pedido > 0) {
-        $pg_s_esc   = $conn->real_escape_string($pagamento_status);
-        $st_p_esc   = $conn->real_escape_string($status_pedido);
-        $pay_id_esc = $conn->real_escape_string($payment_id);
-        $pay_t_esc  = $conn->real_escape_string($payment_type);
-        $pago_em    = $pagamento_status === 'aprovado' ? ", pago_em = NOW()" : '';
-
-        $conn->query("
-            UPDATE pedidos
-            SET pagamento_status = '$pg_s_esc',
-                status           = '$st_p_esc',
-                mp_payment_id    = '$pay_id_esc',
-                mp_payment_type  = '$pay_t_esc'
-                $pago_em
-            WHERE id = $id_pedido
-        ");
+        if ($pagamento_status === 'aprovado') {
+            $stmt = $conn->prepare(
+                "UPDATE pedidos
+                 SET pagamento_status = ?,
+                     status = ?,
+                     mp_payment_id = ?,
+                     mp_payment_type = ?,
+                     pago_em = NOW()
+                 WHERE id = ?"
+            );
+            $stmt->bind_param("ssssi", $pagamento_status, $status_pedido, $payment_id, $payment_type, $id_pedido);
+        } else {
+            $stmt = $conn->prepare(
+                "UPDATE pedidos
+                 SET pagamento_status = ?,
+                     status = ?,
+                     mp_payment_id = ?,
+                     mp_payment_type = ?
+                 WHERE id = ?"
+            );
+            $stmt->bind_param("ssssi", $pagamento_status, $status_pedido, $payment_id, $payment_type, $id_pedido);
+        }
+        $stmt->execute();
+        $stmt->close();
 
         $log = date('Y-m-d H:i:s') . " | Webhook processado | Pedido #$id_pedido | Payment $payment_id | Status: $pagamento_status\n";
-        file_put_contents('logs/mp_pagamentos.log', $log, FILE_APPEND);
+        file_put_contents($logPagamentosPath, $log, FILE_APPEND);
     } else {
         $log = date('Y-m-d H:i:s') . " | Webhook: pedido não encontrado | Payment $payment_id | External ref: $external_ref\n";
-        file_put_contents('logs/mp_pagamentos.log', $log, FILE_APPEND);
+        file_put_contents($logPagamentosPath, $log, FILE_APPEND);
     }
 }
 

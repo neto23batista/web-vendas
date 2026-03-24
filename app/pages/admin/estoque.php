@@ -189,6 +189,14 @@ else{$movimentacoes=$conn->query($sql_mov)->fetch_all(MYSQLI_ASSOC);}
 
 $categorias=$conn->query("SELECT DISTINCT categoria FROM produtos WHERE categoria IS NOT NULL AND categoria!='' ORDER BY categoria")->fetch_all(MYSQLI_ASSOC);
 $produtos_sel=$conn->query("SELECT id,nome,estoque_atual,localizacao FROM produtos ORDER BY nome")->fetch_all(MYSQLI_ASSOC);
+$nome_produto_filtro = '';
+if($fmprod>0){
+    $stmt = $conn->prepare("SELECT nome FROM produtos WHERE id = ?");
+    $stmt->bind_param("i", $fmprod);
+    $stmt->execute();
+    $nome_produto_filtro = (string)($stmt->get_result()->fetch_assoc()['nome'] ?? '');
+    $stmt->close();
+}
 $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 ?>
 <!DOCTYPE html>
@@ -342,12 +350,11 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
         <a href="estoque.php#historico"                            class="mov-tab <?= !$fmtipo?'active':'' ?>">Todos</a>
         <a href="estoque.php?mov_tipo=entrada#historico"           class="mov-tab <?= $fmtipo==='entrada'?'active':'' ?>">↓ Entradas</a>
         <a href="estoque.php?mov_tipo=saida#historico"             class="mov-tab <?= $fmtipo==='saida'?'active':'' ?>">↑ Saídas</a>
-        <a href="estoque.php?mov_tipo=ajuste#historico"            class="mov-tab <?= $fmtipo==='ajuste'?'active':'' ?>">âš– Ajustes</a>
+        <a href="estoque.php?mov_tipo=ajuste#historico"            class="mov-tab <?= $fmtipo==='ajuste'?'active':'' ?>">⚖ Ajustes</a>
         <a href="estoque.php?mov_tipo=transferencia_out#historico" class="mov-tab <?= $fmtipo==='transferencia_out'?'active':'' ?>">⇄ Transf.</a>
         <?php if($fmprod): ?>
-        <?php $np=$conn->query("SELECT nome FROM produtos WHERE id=$fmprod")->fetch_assoc(); ?>
         <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface2);border-radius:var(--radius-full);">
-            <?= htmlspecialchars($np['nome']??'') ?> <a href="estoque.php#historico" style="color:var(--danger);">✕</a>
+            <?= htmlspecialchars($nome_produto_filtro) ?> <a href="estoque.php#historico" style="color:var(--danger);">✕</a>
         </span>
         <?php endif; ?>
     </div>

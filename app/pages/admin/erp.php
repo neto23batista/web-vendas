@@ -49,19 +49,6 @@ function validar_url_webhook(string $url): bool {
     return $scheme === 'https' || $isLocal;
 }
 
-if (false) {
-
-
- 
-$cols_p = array_column($conn->query("SHOW COLUMNS FROM produtos")->fetch_all(MYSQLI_ASSOC), 'Field');
-$cols_ped = array_column($conn->query("SHOW COLUMNS FROM pedidos")->fetch_all(MYSQLI_ASSOC), 'Field');
-$auto = ['produtos'=>['estoque_atual'=>"ALTER TABLE produtos ADD COLUMN estoque_atual INT NOT NULL DEFAULT 0",'estoque_minimo'=>"ALTER TABLE produtos ADD COLUMN estoque_minimo INT NOT NULL DEFAULT 5",'estoque_maximo'=>"ALTER TABLE produtos ADD COLUMN estoque_maximo INT NOT NULL DEFAULT 999",'unidade'=>"ALTER TABLE produtos ADD COLUMN unidade VARCHAR(20) DEFAULT 'un'",'localizacao'=>"ALTER TABLE produtos ADD COLUMN localizacao VARCHAR(60) DEFAULT NULL",'ncm'=>"ALTER TABLE produtos ADD COLUMN ncm VARCHAR(8) DEFAULT '30049099'",'cfop'=>"ALTER TABLE produtos ADD COLUMN cfop VARCHAR(4) DEFAULT '5102'"],'pedidos'=>['forma_pagamento'=>"ALTER TABLE pedidos ADD COLUMN forma_pagamento ENUM('presencial','app') DEFAULT 'presencial'",'pagamento_status'=>"ALTER TABLE pedidos ADD COLUMN pagamento_status ENUM('pendente','aprovado','recusado','em_analise','cancelado') DEFAULT 'pendente'",'nfe_numero'=>"ALTER TABLE pedidos ADD COLUMN nfe_numero VARCHAR(9) DEFAULT NULL",'nfe_serie'=>"ALTER TABLE pedidos ADD COLUMN nfe_serie VARCHAR(3) DEFAULT '001'",'nfe_chave'=>"ALTER TABLE pedidos ADD COLUMN nfe_chave VARCHAR(45) DEFAULT NULL",'nfe_status'=>"ALTER TABLE pedidos ADD COLUMN nfe_status ENUM('pendente','emitida','cancelada') DEFAULT 'pendente'",'nfe_emitida_em'=>"ALTER TABLE pedidos ADD COLUMN nfe_emitida_em TIMESTAMP NULL"]];
-foreach($auto['produtos'] as $col=>$sql){ if(!in_array($col,$cols_p)) $conn->query($sql); }
-foreach($auto['pedidos']  as $col=>$sql){ if(!in_array($col,$cols_ped)) $conn->query($sql); }
-
- 
-}
-
 $is_api = isset($_GET['api']) || isset($_SERVER['HTTP_X_API_KEY']);
 $componentes_erp = ['erp', 'estoque', 'pagamentos', 'nfe'];
 if ($is_api) {
@@ -69,7 +56,7 @@ if ($is_api) {
         http_response_code(503);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
-            'erro' => 'Existem migracoes pendentes para o modulo ERP. Execute-as no painel administrativo.',
+            'erro' => 'Existem migrações pendentes para o módulo ERP. Execute-as no painel administrativo.',
             'code' => 503,
         ]);
         exit;
@@ -247,7 +234,7 @@ verificar_login('dono');
 if (schema_componentes_pendentes($conn, $componentes_erp)) {
     redirecionar(
         'migracoes.php',
-        'Existem migracoes pendentes para o modulo ERP. Execute-as antes de usar esta tela.',
+        'Existem migrações pendentes para o módulo ERP. Execute-as antes de usar esta tela.',
         'erro'
     );
 }

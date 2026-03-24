@@ -9,24 +9,7 @@ if (isset($_SESSION['usuario'])) redirecionar('index.php');
 
 if (schema_componentes_pendentes($conn, ['auth'])) {
     http_response_code(503);
-    die('Recuperacao de senha temporariamente indisponivel. Execute as migracoes pendentes no painel administrativo.');
-}
-
-if (false) {
-
- 
-$conn->query("CREATE TABLE IF NOT EXISTS password_resets (
-    id         INT PRIMARY KEY AUTO_INCREMENT,
-    id_usuario INT NOT NULL,
-    token      VARCHAR(64) UNIQUE NOT NULL,
-    expira_em  DATETIME NOT NULL,
-    usado      TINYINT(1) DEFAULT 0,
-    criado_em  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE CASCADE,
-    INDEX idx_token   (token),
-    INDEX idx_usuario (id_usuario)
-) ENGINE=InnoDB");
-
+    die('Recuperação de senha temporariamente indisponível. Execute as migrações pendentes no painel administrativo.');
 }
 
 $mensagem = '';

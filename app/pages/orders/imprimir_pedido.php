@@ -7,10 +7,37 @@ verificar_login('dono');
 
 $id_pedido = (int) ($_GET['id'] ?? 0);
 
-$pedido = $conn->query("SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco FROM pedidos p JOIN usuarios u ON p.id_cliente = u.id WHERE p.id = $id_pedido")->fetch_assoc();
-if (!$pedido) die("Pedido não encontrado!");
+if ($id_pedido <= 0) {
+    http_response_code(400);
+    exit('Pedido inválido.');
+}
 
-$itens = $conn->query("SELECT pi.*, pr.nome as produto_nome FROM pedido_itens pi JOIN produtos pr ON pi.id_produto = pr.id WHERE pi.id_pedido = $id_pedido")->fetch_all(MYSQLI_ASSOC);
+$stmt = $conn->prepare(
+    "SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
+     FROM pedidos p
+     JOIN usuarios u ON p.id_cliente = u.id
+     WHERE p.id = ?"
+);
+$stmt->bind_param("i", $id_pedido);
+$stmt->execute();
+$pedido = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if (!$pedido) {
+    http_response_code(404);
+    exit('Pedido não encontrado.');
+}
+
+$stmt = $conn->prepare(
+    "SELECT pi.*, pr.nome as produto_nome
+     FROM pedido_itens pi
+     JOIN produtos pr ON pi.id_produto = pr.id
+     WHERE pi.id_pedido = ?"
+);
+$stmt->bind_param("i", $id_pedido);
+$stmt->execute();
+$itens = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'PRONTO','entregue'=>'ENTREGUE','cancelado'=>'CANCELADO'];
 ?>

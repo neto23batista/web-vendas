@@ -36,22 +36,30 @@ if (empty($ids_remover)) {
 }
 
 $ids_string = implode(',', $ids_remover);  
+$placeholders = implode(',', array_fill(0, count($ids_remover), '?'));
+$types = str_repeat('i', count($ids_remover));
 
 $conn->begin_transaction();
 try {
-    $conn->query("DELETE FROM pedido_itens WHERE id_pedido IN ($ids_string)");
-    $itens_removidos = $conn->affected_rows;
+    $stmt = $conn->prepare("DELETE FROM pedido_itens WHERE id_pedido IN ($placeholders)");
+    $stmt->bind_param($types, ...$ids_remover);
+    $stmt->execute();
+    $itens_removidos = $stmt->affected_rows;
+    $stmt->close();
 
-    $conn->query("DELETE FROM pedidos WHERE id IN ($ids_string)");
-    $pedidos_removidos = $conn->affected_rows;
+    $stmt = $conn->prepare("DELETE FROM pedidos WHERE id IN ($placeholders)");
+    $stmt->bind_param($types, ...$ids_remover);
+    $stmt->execute();
+    $pedidos_removidos = $stmt->affected_rows;
+    $stmt->close();
 
     $conn->commit();
 
-     
-    @mkdir('logs', 0755, true);
+    $logsDir = FARMAVIDA_ROOT . '/logs';
+    @mkdir($logsDir, 0755, true);
     $log = date('Y-m-d H:i:s') . " | Admin: {$_SESSION['usuario']} | "
          . "Limpeza: $pedidos_removidos pedidos, $itens_removidos itens\n";
-    file_put_contents('logs/limpeza.log', $log, FILE_APPEND);
+    file_put_contents($logsDir . '/limpeza.log', $log, FILE_APPEND);
 
     redirecionar('painel_dono.php', "Limpeza concluída: $pedidos_removidos pedido(s) e $itens_removidos item(ns) removidos.");
 } catch (Exception $e) {

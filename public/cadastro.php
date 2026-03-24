@@ -1,3 +1,4 @@
 <?php
-if (!defined('FARMAVIDA_ROOT')) { define('FARMAVIDA_ROOT', dirname(__DIR__)); }
-require_once FARMAVIDA_ROOT . '/app/pages/auth/cadastro.php';
+
+$controllerClass = \FarmaVida\Presentation\Web\Controllers\Auth\RegisterController::class;
+require __DIR__ . '/_run.php';

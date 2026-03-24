@@ -8,44 +8,9 @@ verificar_login('dono');
 if (schema_componentes_pendentes($conn, ['nfe'])) {
     redirecionar(
         'migracoes.php',
-        'Existem migracoes pendentes de NF-e. Execute-as antes de usar este modulo.',
+        'Existem migrações pendentes de NF-e. Execute-as antes de usar este módulo.',
         'erro'
     );
-}
-
-if (false) {
-
- 
-$existentes = array_column($conn->query("SHOW COLUMNS FROM pedidos")->fetch_all(MYSQLI_ASSOC), 'Field');
-$sqls_pedidos = [
-    'nfe_numero'        => "ALTER TABLE pedidos ADD COLUMN nfe_numero VARCHAR(9) DEFAULT NULL",
-    'nfe_serie'         => "ALTER TABLE pedidos ADD COLUMN nfe_serie VARCHAR(3) DEFAULT '001'",
-    'nfe_chave'         => "ALTER TABLE pedidos ADD COLUMN nfe_chave VARCHAR(45) DEFAULT NULL",
-    'nfe_status'        => "ALTER TABLE pedidos ADD COLUMN nfe_status ENUM('pendente','emitida','cancelada') DEFAULT 'pendente'",
-    'nfe_emitida_em'    => "ALTER TABLE pedidos ADD COLUMN nfe_emitida_em TIMESTAMP NULL",
-    'nfe_cancelada_em'  => "ALTER TABLE pedidos ADD COLUMN nfe_cancelada_em TIMESTAMP NULL",
-    'nfe_justificativa' => "ALTER TABLE pedidos ADD COLUMN nfe_justificativa TEXT DEFAULT NULL",
-];
-foreach ($sqls_pedidos as $col => $sql) {
-    if (!in_array($col, $existentes)) $conn->query($sql);
-}
-
-$cols_prod  = array_column($conn->query("SHOW COLUMNS FROM produtos")->fetch_all(MYSQLI_ASSOC), 'Field');
-$sqls_prods = [
-    'ncm'  => "ALTER TABLE produtos ADD COLUMN ncm  VARCHAR(8) DEFAULT '30049099'",
-    'cfop' => "ALTER TABLE produtos ADD COLUMN cfop VARCHAR(4) DEFAULT '5102'",
-    'cst'  => "ALTER TABLE produtos ADD COLUMN cst  VARCHAR(3) DEFAULT '500'",
-];
-foreach ($sqls_prods as $col => $sql) {
-    if (!in_array($col, $cols_prod)) $conn->query($sql);
-}
-
-$cols_usr = array_column($conn->query("SHOW COLUMNS FROM usuarios")->fetch_all(MYSQLI_ASSOC), 'Field');
-if (!in_array('cpf', $cols_usr)) {
-    $conn->query("ALTER TABLE usuarios ADD COLUMN cpf VARCHAR(14) DEFAULT NULL AFTER telefone");
-}
-
- 
 }
 
 $empresa = [
