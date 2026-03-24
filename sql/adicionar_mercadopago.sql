@@ -1,7 +1,7 @@
--- ============================================================
--- MIGRAÇÃO: Campos de pagamento Mercado Pago
--- Execute uma única vez no banco farmavida
--- ============================================================
+
+
+
+
 USE farmavida;
 
 ALTER TABLE pedidos
@@ -12,10 +12,10 @@ ALTER TABLE pedidos
     ADD COLUMN mp_payment_type   VARCHAR(50)  DEFAULT NULL AFTER mp_payment_id,
     ADD COLUMN pago_em           TIMESTAMP NULL DEFAULT NULL AFTER mp_payment_type;
 
--- Índice para busca rápida por preference/payment id
+
 CREATE INDEX idx_mp_preference ON pedidos (mp_preference_id);
 CREATE INDEX idx_mp_payment    ON pedidos (mp_payment_id);
 CREATE INDEX idx_pagamento_status ON pedidos (pagamento_status);
 
--- Verificar estrutura atualizada
+
 DESCRIBE pedidos;

@@ -18,27 +18,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $telefone  = sanitizar_texto($_POST['telefone']  ?? '');
     $endereco  = sanitizar_texto($_POST['endereco']  ?? '');
     $cpf_raw   = $_POST['cpf']              ?? '';
-    $cpf       = preg_replace('/\D/', '', $cpf_raw);   // apenas dÃ­gitos
+    $cpf       = preg_replace('/\D/', '', $cpf_raw);    
 
     if (empty($nome) || empty($email) || empty($senha)) {
-        $erro = 'Preencha todos os campos obrigatÃ³rios!';
+        $erro = 'Preencha todos os campos obrigatórios!';
     } elseif (!validar_email($email)) {
-        $erro = 'E-mail invÃ¡lido!';
+        $erro = 'E-mail inválido!';
     } elseif (strlen($senha) < 6) {
-        $erro = 'A senha deve ter no mÃ­nimo 6 caracteres!';
+        $erro = 'A senha deve ter no mínimo 6 caracteres!';
     } elseif ($senha !== $confirmar) {
-        $erro = 'As senhas nÃ£o coincidem!';
+        $erro = 'As senhas não coincidem!';
     } elseif (!empty($cpf) && !validar_cpf($cpf)) {
-        $erro = 'CPF invÃ¡lido! Verifique os nÃºmeros digitados.';
+        $erro = 'CPF inválido! Verifique os números digitados.';
     } else {
-        // Verificar e-mail duplicado
+         
         $stmt = $conn->prepare("SELECT id FROM usuarios WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $existe_email = $stmt->get_result()->num_rows > 0;
         $stmt->close();
 
-        // Verificar CPF duplicado (se informado)
+         
         $existe_cpf = false;
         if (!empty($cpf)) {
             $cpf_fmt = formatar_cpf($cpf);
@@ -50,9 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         if ($existe_email) {
-            $erro = 'Este e-mail jÃ¡ estÃ¡ cadastrado!';
+            $erro = 'Este e-mail já está cadastrado!';
         } elseif ($existe_cpf) {
-            $erro = 'Este CPF jÃ¡ estÃ¡ cadastrado!';
+            $erro = 'Este CPF já está cadastrado!';
         } else {
             $senha_hash = hash_senha($senha);
             $cpf_salvo  = !empty($cpf) ? formatar_cpf($cpf) : null;
@@ -65,10 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if ($stmt->execute()) {
                 $stmt->close();
-                // E-mail de boas-vindas (melhor esforÃ§o â€” nÃ£o bloqueia o fluxo)
+                 
                 $corpo = email_boas_vindas($nome);
-                enviar_email($email, 'Bem-vindo Ã  FarmaVida! ðŸ’Š', $corpo);
-                redirecionar('login.php', 'Conta criada com sucesso! FaÃ§a login para continuar.');
+                enviar_email($email, 'Bem-vindo à FarmaVida! 💊', $corpo);
+                redirecionar('login.php', 'Conta criada com sucesso! Faça login para continuar.');
             } else {
                 $erro = 'Erro ao cadastrar. Tente novamente!';
             }
@@ -131,13 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="form-group">
-                <label><i class="fas fa-map-marker-alt"></i> EndereÃ§o</label>
-                <textarea name="endereco" rows="2" placeholder="Rua, nÃºmero, bairro, cidade"><?= isset($_POST['endereco']) ? htmlspecialchars($_POST['endereco']) : '' ?></textarea>
+                <label><i class="fas fa-map-marker-alt"></i> Endereço</label>
+                <textarea name="endereco" rows="2" placeholder="Rua, número, bairro, cidade"><?= isset($_POST['endereco']) ? htmlspecialchars($_POST['endereco']) : '' ?></textarea>
             </div>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Senha * <small style="font-weight:400;color:var(--gray);">(mÃ­n. 6 chars)</small></label>
+                    <label><i class="fas fa-lock"></i> Senha * <small style="font-weight:400;color:var(--gray);">(mín. 6 chars)</small></label>
                     <input type="password" name="senha" required minlength="6"
                            placeholder="Crie uma senha" autocomplete="new-password">
                 </div>
@@ -154,8 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </form>
 
         <div class="links">
-            <p>JÃ¡ tem conta? <a href="login.php">FaÃ§a login aqui</a></p>
-            <p><a href="index.php"><i class="fas fa-arrow-left"></i> Voltar Ã  loja</a></p>
+            <p>Já tem conta? <a href="login.php">Faça login aqui</a></p>
+            <p><a href="index.php"><i class="fas fa-arrow-left"></i> Voltar à loja</a></p>
         </div>
     </div>
 

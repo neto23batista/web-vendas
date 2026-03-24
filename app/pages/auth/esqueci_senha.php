@@ -14,7 +14,7 @@ if (schema_componentes_pendentes($conn, ['auth'])) {
 
 if (false) {
 
-// Criar tabela de tokens se nÃ£o existir
+ 
 $conn->query("CREATE TABLE IF NOT EXISTS password_resets (
     id         INT PRIMARY KEY AUTO_INCREMENT,
     id_usuario INT NOT NULL,
@@ -38,10 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = sanitizar_texto($_POST['email'] ?? '');
 
     if (!validar_email($email)) {
-        $mensagem = 'E-mail invÃ¡lido!';
+        $mensagem = 'E-mail inválido!';
         $tipo_msg = 'erro';
     } else {
-        // Mensagem genÃ©rica independente de existir ou nÃ£o (anti-enumeraÃ§Ã£o)
+         
         $stmt = $conn->prepare("SELECT id, nome FROM usuarios WHERE email = ? AND tipo = 'cliente'");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($usuario) {
-            // Invalida tokens anteriores
+             
             $stmt = $conn->prepare("UPDATE password_resets SET usado = 1 WHERE id_usuario = ? AND usado = 0");
             $stmt->bind_param("i", $usuario['id']);
             $stmt->execute();
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             email_redefinir_senha($email, $usuario['nome'], $link);
         }
 
-        $mensagem = 'Se este e-mail estiver cadastrado, vocÃª receberÃ¡ as instruÃ§Ãµes em instantes. Verifique tambÃ©m a pasta de spam.';
+        $mensagem = 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes. Verifique também a pasta de spam.';
         $tipo_msg = 'sucesso';
     }
 }
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        autocomplete="email">
             </div>
             <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
-                <i class="fas fa-paper-plane"></i> Enviar link de redefiniÃ§Ã£o
+                <i class="fas fa-paper-plane"></i> Enviar link de redefinição
             </button>
         </form>
         <?php endif; ?>

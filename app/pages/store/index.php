@@ -7,18 +7,18 @@ $categoria  = $_GET['categoria'] ?? '';
 $busca      = $_GET['busca'] ?? '';
 $usuario_id = $_SESSION['id_usuario'] ?? 0;
 
-// Busca todos os produtos disponÃ­veis
+ 
 $stmt = $conn->prepare("SELECT * FROM produtos WHERE disponivel = 1 ORDER BY categoria, nome");
 $stmt->execute();
 $todos_produtos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Categorias disponÃ­veis
+ 
 $categorias = $conn->query(
     "SELECT DISTINCT categoria FROM produtos WHERE disponivel=1 AND categoria IS NOT NULL AND categoria!='' ORDER BY categoria"
 )->fetch_all(MYSQLI_ASSOC);
 
-// Mais pedidos (top 6 produtos por quantidade vendida)
+ 
 $mais_pedidos = $conn->query(
     "SELECT pr.id, pr.nome, pr.preco, pr.imagem, pr.categoria,
             pr.estoque_atual, pr.estoque_minimo,
@@ -36,11 +36,11 @@ $cart_count = $usuario_id
     ? (int)$conn->query("SELECT COUNT(*) as t FROM carrinho WHERE id_cliente=$usuario_id")->fetch_assoc()['t']
     : 0;
 
-// Itens do carrinho para preview
+ 
 $cart_items = [];
 if ($usuario_id) {
     $stmt = $conn->prepare(
-        "SELECT c.id, c.quantidade, p.nome, p.preco, p.imagem
+        "SELECT c.id, c.quantidade, p.nome, p.preco, p.imagem, p.categoria
          FROM carrinho c JOIN produtos p ON c.id_produto = p.id
          WHERE c.id_cliente = ? AND p.disponivel = 1 ORDER BY c.adicionado_em DESC LIMIT 5"
     );
@@ -50,7 +50,7 @@ if ($usuario_id) {
     $stmt->close();
 }
 
-// Quantidades no carrinho por produto
+ 
 $cart_qtd = [];
 if ($usuario_id) {
     $stmt = $conn->prepare(
@@ -69,16 +69,16 @@ $msg_tipo = isset($_SESSION['sucesso']) ? 'success' : 'error';
 unset($_SESSION['sucesso'], $_SESSION['erro']);
 
 $cat_icons = [
-    'Medicamentos'       => 'ðŸ’Š',
-    'GenÃ©ricos'          => 'ðŸ”µ',
-    'Vitaminas'          => 'ðŸŒ¿',
-    'Higiene Pessoal'    => 'ðŸ§´',
-    'DermocosmÃ©ticos'    => 'âœ¨',
-    'Infantil'           => 'ðŸ‘¶',
-    'Bem-Estar'          => 'ðŸ’š',
-    'Primeiros Socorros' => 'ðŸ©¹',
-    'Ortopedia'          => 'ðŸ¦½',
-    'Outros'             => 'ðŸ“¦',
+    'Medicamentos'       => '💊',
+    'Genéricos'          => '🔵',
+    'Vitaminas'          => '🌿',
+    'Higiene Pessoal'    => '🧴',
+    'Dermocosméticos'    => '✨',
+    'Infantil'           => '👶',
+    'Bem-Estar'          => '💚',
+    'Primeiros Socorros' => '🩹',
+    'Ortopedia'          => '🦽',
+    'Outros'             => '📦',
 ];
 ?>
 <!DOCTYPE html>
@@ -87,14 +87,14 @@ $cat_icons = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmaVida â€” Sua FarmÃ¡cia Premium</title>
+    <title>FarmaVida — Sua Farmácia Premium</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       RESET & TOKENS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         *,
         *::before,
         *::after {
@@ -148,7 +148,7 @@ $cat_icons = [
             overflow-x: hidden;
         }
 
-        /* â”€â”€ Noise texture overlay â”€â”€ */
+         
         body::before {
             content: '';
             position: fixed;
@@ -159,9 +159,9 @@ $cat_icons = [
             opacity: .4;
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       SCROLLBAR
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -175,9 +175,9 @@ $cat_icons = [
             border-radius: 3px;
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       NAVBAR
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .nav {
             position: fixed;
             top: 0;
@@ -227,7 +227,7 @@ $cat_icons = [
             color: var(--primary);
         }
 
-        /* Live search */
+         
         .nav-search {
             flex: 1;
             max-width: 480px;
@@ -272,7 +272,7 @@ $cat_icons = [
             color: var(--primary);
         }
 
-        /* Search results dropdown */
+         
         .search-dropdown {
             position: absolute;
             top: calc(100% + 8px);
@@ -368,7 +368,7 @@ $cat_icons = [
             font-size: 13px;
         }
 
-        /* Nav actions */
+         
         .nav-actions {
             display: flex;
             align-items: center;
@@ -479,9 +479,9 @@ $cat_icons = [
             }
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       CART DRAWER
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .cart-overlay {
             position: fixed;
             inset: 0;
@@ -657,9 +657,9 @@ $cat_icons = [
             opacity: .4;
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       HERO
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .hero {
             position: relative;
             min-height: 92vh;
@@ -669,7 +669,7 @@ $cat_icons = [
             overflow: hidden;
         }
 
-        /* Animated gradient background */
+         
         .hero-bg {
             position: absolute;
             inset: 0;
@@ -690,7 +690,7 @@ $cat_icons = [
             mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
         }
 
-        /* Floating pills */
+         
         .hero-particles {
             position: absolute;
             inset: 0;
@@ -870,7 +870,7 @@ $cat_icons = [
             letter-spacing: .5px;
         }
 
-        /* Hero visual side */
+         
         .hero-visual {
             position: absolute;
             right: -5%;
@@ -919,9 +919,9 @@ $cat_icons = [
             }
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       BADGES SECTION
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .badges-bar {
             display: flex;
             gap: 12px;
@@ -958,9 +958,9 @@ $cat_icons = [
             color: var(--text);
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       MAIN CONTENT
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .main {
             padding: 60px clamp(16px, 4vw, 48px);
             position: relative;
@@ -1010,9 +1010,9 @@ $cat_icons = [
             gap: 10px;
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       CATEGORY FILTERS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .filters {
             display: flex;
             gap: 8px;
@@ -1062,16 +1062,16 @@ $cat_icons = [
             background: rgba(0, 229, 160, .2);
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       PRODUCTS GRID
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 20px;
         }
 
-        /* â”€â”€ Product Card â”€â”€ */
+         
         .product-card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -1120,7 +1120,7 @@ $cat_icons = [
             }
         }
 
-        /* Stock badge */
+         
         .stock-badge {
             position: absolute;
             top: 12px;
@@ -1152,7 +1152,7 @@ $cat_icons = [
             border: 1px solid rgba(0, 229, 160, .3);
         }
 
-        /* Quick view btn */
+         
         .card-quick-view {
             position: absolute;
             top: 12px;
@@ -1186,7 +1186,7 @@ $cat_icons = [
             border-color: var(--primary);
         }
 
-        /* Image */
+         
         .card-img-wrap {
             position: relative;
             overflow: hidden;
@@ -1213,7 +1213,7 @@ $cat_icons = [
             opacity: .3;
         }
 
-        /* Shimmer on hover */
+         
         .card-img-wrap::after {
             content: '';
             position: absolute;
@@ -1291,7 +1291,7 @@ $cat_icons = [
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        /* Add to cart / qty controls */
+         
         .card-add-btn {
             display: inline-flex;
             align-items: center;
@@ -1331,7 +1331,7 @@ $cat_icons = [
             }
         }
 
-        /* Quantity controls */
+         
         .qty-controls {
             display: inline-flex;
             align-items: center;
@@ -1371,9 +1371,9 @@ $cat_icons = [
             color: var(--text);
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       MAIS PEDIDOS â€” Horizontal scroll
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .trending-scroll {
             display: flex;
             gap: 16px;
@@ -1455,9 +1455,9 @@ $cat_icons = [
             margin-bottom: 6px;
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       PRODUCT QUICK VIEW MODAL
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -1603,9 +1603,9 @@ $cat_icons = [
             }
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       EMPTY / ALERT
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .empty-state {
             text-align: center;
             padding: 80px 20px;
@@ -1650,9 +1650,9 @@ $cat_icons = [
             color: var(--danger);
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       TOAST
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         .toast-container {
             position: fixed;
             bottom: 24px;
@@ -1701,9 +1701,9 @@ $cat_icons = [
             }
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       RESPONSIVE
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         @media(max-width:768px) {
             .hero {
                 min-height: auto;
@@ -1771,10 +1771,10 @@ $cat_icons = [
 
 <body>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• NAVBAR â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <nav class="nav" id="navbar">
         <a href="index.php" class="nav-logo">
-            <div class="nav-logo-icon">ðŸ’Š</div>
+            <div class="nav-logo-icon">💊</div>
             Farma<span>Vida</span>
         </a>
 
@@ -1813,7 +1813,7 @@ $cat_icons = [
         </div>
     </nav>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• CART DRAWER â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <?php if (isset($_SESSION['usuario']) && $_SESSION['tipo'] == 'cliente'): ?>
         <div class="cart-overlay" id="cart-overlay"></div>
         <div class="cart-drawer" id="cart-drawer">
@@ -1828,20 +1828,18 @@ $cat_icons = [
                 <?php if (empty($cart_items)): ?>
                     <div class="cart-empty-msg">
                         <i class="fas fa-shopping-bag"></i>
-                        <p>Sua sacola estÃ¡ vazia</p>
+                        <p>Sua sacola está vazia</p>
                     </div>
                 <?php else: ?>
                     <?php foreach ($cart_items as $ci): ?>
                         <div class="cart-drawer-item">
                             <div class="cart-drawer-img">
-                                <?php if ($ci['imagem'] && file_exists($ci['imagem'])): ?>
-                                    <img src="<?= htmlspecialchars($ci['imagem']) ?>" alt="">
-                                    <?php else: ?>ðŸ’Š<?php endif; ?>
+                                <img src="<?= htmlspecialchars(url_imagem_produto($ci['imagem'] ?? null, $ci['nome'] ?? 'Produto', $ci['categoria'] ?? 'Sem categoria')) ?>" alt="">
                             </div>
                             <div class="cart-drawer-info">
                                 <div class="cart-drawer-name"><?= htmlspecialchars($ci['nome']) ?></div>
                                 <div class="cart-drawer-price"><?= formatar_preco($ci['preco']) ?></div>
-                                <div class="cart-drawer-qty"><?= $ci['quantidade'] ?>Ã— unidade</div>
+                                <div class="cart-drawer-qty"><?= $ci['quantidade'] ?>× unidade</div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -1864,12 +1862,12 @@ $cat_icons = [
         </div>
     <?php endif; ?>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• HERO â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <section class="hero" id="hero">
         <div class="hero-bg"></div>
         <div class="hero-grid"></div>
 
-        <!-- Floating pills -->
+        
         <div class="hero-particles">
             <div class="pill-float" style="--w:10px;--h:24px;--c:rgba(0,229,160,.18);--dur:9s;--delay:0s;--rot:20deg;--op:.7;top:15%;left:55%;"></div>
             <div class="pill-float" style="--w:8px;--h:20px;--c:rgba(77,156,255,.15);--dur:11s;--delay:1.5s;--rot:-15deg;top:60%;left:70%;"></div>
@@ -1882,19 +1880,19 @@ $cat_icons = [
 
         <div class="hero-content">
             <div class="hero-eyebrow">
-                <span>FarmÃ¡cia Premium</span>
+                <span>Farmácia Premium</span>
             </div>
             <h1 class="hero-title">
-                Sua saÃºde em<br>
-                <span class="accent">boas mÃ£os</span>
+                Sua saúde em<br>
+                <span class="accent">boas mãos</span>
             </h1>
             <p class="hero-sub">
-                Medicamentos, vitaminas, dermocosmÃ©ticos e muito mais â€”
-                com entrega rÃ¡pida e orientaÃ§Ã£o farmacÃªutica de qualidade.
+                Medicamentos, vitaminas, dermocosméticos e muito mais —
+                com entrega rápida e orientação farmacêutica de qualidade.
             </p>
             <div class="hero-actions">
                 <a href="#catalogo" class="hero-btn hero-btn-primary">
-                    <i class="fas fa-pills"></i> Ver CatÃ¡logo
+                    <i class="fas fa-pills"></i> Ver Catálogo
                 </a>
                 <?php if (!isset($_SESSION['usuario'])): ?>
                     <a href="cadastro.php" class="hero-btn hero-btn-secondary">
@@ -1919,16 +1917,16 @@ $cat_icons = [
         </div>
     </section>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• BADGES â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <div class="badges-bar">
-        <div class="badge-pill"><i class="fas fa-truck-fast"></i> Entrega RÃ¡pida</div>
+        <div class="badge-pill"><i class="fas fa-truck-fast"></i> Entrega Rápida</div>
         <div class="badge-pill"><i class="fas fa-shield-halved"></i> Compra Segura</div>
-        <div class="badge-pill"><i class="fas fa-tag"></i> Melhores PreÃ§os</div>
-        <div class="badge-pill"><i class="fas fa-user-doctor"></i> OrientaÃ§Ã£o FarmacÃªutica</div>
+        <div class="badge-pill"><i class="fas fa-tag"></i> Melhores Preços</div>
+        <div class="badge-pill"><i class="fas fa-user-doctor"></i> Orientação Farmacêutica</div>
         <div class="badge-pill"><i class="fas fa-rotate-left"></i> Troca Facilitada</div>
     </div>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• ALERTS â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <?php if ($msg): ?>
         <div class="alert-bar alert-<?= $msg_tipo ?>" style="margin-top:28px;">
             <i class="fas fa-<?= $msg_tipo == 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
@@ -1936,14 +1934,14 @@ $cat_icons = [
         </div>
     <?php endif; ?>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• MAIN CONTENT â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <main class="main" id="catalogo">
 
-        <!-- MAIS PEDIDOS -->
+        
         <?php if (!empty($mais_pedidos)): ?>
             <section style="margin-bottom:56px;">
                 <div class="section-header">
-                    <div class="section-title">ðŸ”¥ Mais Pedidos</div>
+                    <div class="section-title">🔥 Mais Pedidos</div>
                     <a href="#" class="section-link" onclick="filtrarCategoria('');return false;">
                         Ver todos <i class="fas fa-arrow-right"></i>
                     </a>
@@ -1952,11 +1950,7 @@ $cat_icons = [
                     <?php foreach ($mais_pedidos as $p): ?>
                         <div class="trending-card" onclick="abrirModal(<?= $p['id'] ?>)">
                             <div class="trending-img">
-                                <?php if ($p['imagem'] && file_exists($p['imagem'])): ?>
-                                    <img src="<?= htmlspecialchars($p['imagem']) ?>" alt="">
-                                <?php else: ?>
-                                    <?= $cat_icons[$p['categoria']] ?? 'ðŸ“¦' ?>
-                                <?php endif; ?>
+                                <img src="<?= htmlspecialchars(url_imagem_produto($p['imagem'] ?? null, $p['nome'] ?? 'Produto', $p['categoria'] ?? 'Sem categoria')) ?>" alt="">
                             </div>
                             <div class="trending-info">
                                 <div class="trending-tag"><i class="fas fa-fire"></i> Popular</div>
@@ -1969,7 +1963,7 @@ $cat_icons = [
             </section>
         <?php endif; ?>
 
-        <!-- FILTROS -->
+        
         <section style="margin-bottom:40px;">
             <div class="filters" id="filters">
                 <div class="filter-chip active" data-cat="" onclick="filtrarCategoria('')">
@@ -1984,7 +1978,7 @@ $cat_icons = [
                 ?>
                     <div class="filter-chip" data-cat="<?= htmlspecialchars($nome_cat) ?>"
                         onclick="filtrarCategoria('<?= addslashes(htmlspecialchars($nome_cat)) ?>')">
-                        <?= $cat_icons[$nome_cat] ?? 'ðŸ“¦' ?>
+                        <?= $cat_icons[$nome_cat] ?? '📦' ?>
                         <?= htmlspecialchars($nome_cat) ?>
                         <span class="chip-count"><?= $qtd ?></span>
                     </div>
@@ -1992,7 +1986,7 @@ $cat_icons = [
             </div>
         </section>
 
-        <!-- GRID DE PRODUTOS -->
+        
         <section>
             <div class="section-header">
                 <div class="section-title" id="grid-title">Todos os Produtos</div>
@@ -2005,16 +1999,16 @@ $cat_icons = [
                 <?php foreach ($todos_produtos as $i => $p):
                     $est = (int)($p['estoque_atual'] ?? 99);
                     $min = (int)($p['estoque_minimo'] ?? 5);
-                    $icon = $cat_icons[$p['categoria']] ?? 'ðŸ“¦';
+                    $icon = $cat_icons[$p['categoria']] ?? '📦';
                     $qtd_carrinho = $cart_qtd[$p['id']] ?? 0;
                     $stock_class = '';
                     $stock_label = '';
                     if ($est === 0) {
                         $stock_class = 'stock-out';
-                        $stock_label = 'IndisponÃ­vel';
+                        $stock_label = 'Indisponível';
                     } elseif ($est <= $min) {
                         $stock_class = 'stock-low';
-                        $stock_label = 'Ãšltimas unidades';
+                        $stock_label = 'Últimas unidades';
                     }
                 ?>
                     <div class="product-card"
@@ -2030,18 +2024,14 @@ $cat_icons = [
                         <?php endif; ?>
 
                         <button class="card-quick-view" onclick="event.stopPropagation();abrirModal(<?= $p['id'] ?>)"
-                            title="VisualizaÃ§Ã£o rÃ¡pida">
+                            title="Visualização rápida">
                             <i class="fas fa-expand"></i>
                         </button>
 
                         <div class="card-img-wrap">
-                            <?php if ($p['imagem'] && file_exists($p['imagem'])): ?>
-                                <img src="<?= htmlspecialchars($p['imagem']) ?>"
-                                    alt="<?= htmlspecialchars($p['nome']) ?>"
-                                    loading="lazy">
-                            <?php else: ?>
-                                <div class="card-img-placeholder"><?= $icon ?></div>
-                            <?php endif; ?>
+                            <img src="<?= htmlspecialchars(url_imagem_produto($p['imagem'] ?? null, $p['nome'] ?? 'Produto', $p['categoria'] ?? 'Sem categoria')) ?>"
+                                alt="<?= htmlspecialchars($p['nome']) ?>"
+                                loading="lazy">
                         </div>
 
                         <div class="card-body">
@@ -2071,7 +2061,7 @@ $cat_icons = [
                                     <?php else: ?>
                                         <button class="card-add-btn" disabled
                                             style="opacity:.4;cursor:not-allowed;">
-                                            IndisponÃ­vel
+                                            Indisponível
                                         </button>
                                     <?php endif; ?>
                                 <?php else: ?>
@@ -2094,17 +2084,17 @@ $cat_icons = [
 
     </main>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• QUICK VIEW MODAL â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <div class="modal-overlay" id="product-modal" onclick="if(event.target===this)fecharModal()">
         <div class="modal" id="modal-content">
-            <!-- Preenchido via JS -->
+            
         </div>
     </div>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• TOASTS â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- â•â•â•â•â•â•â•â•â•â•â•â• DADOS DOS PRODUTOS (JSON) â•â•â•â•â•â•â•â•â•â•â•â• -->
+    
     <script>
         const CSRF_TOKEN = <?= json_encode(gerar_token_csrf()) ?>;
         const PRODUTOS = <?= json_encode(array_map(fn($p) => [
@@ -2113,7 +2103,7 @@ $cat_icons = [
                                 'descricao' => $p['descricao'],
                                 'preco'     => (float)$p['preco'],
                                 'categoria' => $p['categoria'],
-                                'imagem'    => ($p['imagem'] && file_exists($p['imagem'])) ? $p['imagem'] : null,
+                                'imagem'    => url_imagem_produto($p['imagem'] ?? null, $p['nome'] ?? 'Produto', $p['categoria'] ?? 'Sem categoria'),
                                 'estoque'   => (int)($p['estoque_atual'] ?? 99),
                                 'minimo'    => (int)($p['estoque_minimo'] ?? 5),
                             ], $todos_produtos), JSON_UNESCAPED_UNICODE) ?>;
@@ -2124,18 +2114,18 @@ $cat_icons = [
     </script>
 
     <script>
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   NAVBAR SCROLL
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         window.addEventListener('scroll', () => {
             document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40);
         }, {
             passive: true
         });
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           CART DRAWER
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         const cartToggle = document.getElementById('cart-toggle-btn');
         const cartOverlay = document.getElementById('cart-overlay');
         const cartDrawer = document.getElementById('cart-drawer');
@@ -2159,9 +2149,9 @@ $cat_icons = [
         cartOverlay?.addEventListener('click', fecharDrawer);
         cartClose?.addEventListener('click', fecharDrawer);
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           TOAST
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         function toast(msg, tipo = 'success') {
             const c = document.getElementById('toast-container');
             const t = document.createElement('div');
@@ -2176,9 +2166,9 @@ $cat_icons = [
             }, 3000);
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           LIVE SEARCH
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         const searchInput = document.getElementById('live-search');
         const searchDropdown = document.getElementById('search-dropdown');
         let searchTimer;
@@ -2207,7 +2197,7 @@ $cat_icons = [
                     searchDropdown.innerHTML = matched.map(p => `
                 <div class="search-result-item" onclick="abrirModal(${p.id})">
                     <div class="search-result-img">
-                        ${p.imagem ? `<img src="${p.imagem}" alt="">` : (CAT_ICONS[p.categoria]||'ðŸ“¦')}
+                        ${p.imagem ? `<img src="${p.imagem}" alt="">` : (CAT_ICONS[p.categoria]||'📦')}
                     </div>
                     <div>
                         <div class="search-result-name">${p.nome}</div>
@@ -2227,11 +2217,11 @@ $cat_icons = [
             }
         });
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           FILTRO POR CATEGORIA (sem reload)
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         function filtrarCategoria(cat) {
-            // Atualiza chips
+            
             document.querySelectorAll('.filter-chip').forEach(c => {
                 c.classList.toggle('active', c.dataset.cat === cat);
             });
@@ -2244,7 +2234,7 @@ $cat_icons = [
                     card.classList.remove('hidden');
                     card.style.animationDelay = (i % 20 * 40) + 'ms';
                     card.style.animation = 'none';
-                    void card.offsetHeight; // reflow
+                    void card.offsetHeight; 
                     card.style.animation = 'cardIn .35s both';
                     visiveis++;
                 } else {
@@ -2256,16 +2246,16 @@ $cat_icons = [
             document.getElementById('grid-title').textContent = cat || 'Todos os Produtos';
             document.getElementById('grid-count').textContent = visiveis + ' produto(s)';
 
-            // Scroll suave ao grid
+            
             document.getElementById('catalogo').scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
             });
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           FILTRO POR TEXTO
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         function filtrarTexto(q) {
             const cards = document.querySelectorAll('.product-card');
             let visiveis = 0;
@@ -2281,14 +2271,14 @@ $cat_icons = [
             document.getElementById('grid-count').textContent = visiveis + ' produto(s)';
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           QUICK VIEW MODAL
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         function abrirModal(id) {
             const p = PRODUTOS.find(x => x.id == id);
             if (!p) return;
 
-            const icon = CAT_ICONS[p.categoria] || 'ðŸ“¦';
+            const icon = CAT_ICONS[p.categoria] || '📦';
             const imgHtml = p.imagem ?
                 `<img src="${p.imagem}" alt="${p.nome}">` :
                 `<span style="font-size:72px">${icon}</span>`;
@@ -2299,7 +2289,7 @@ $cat_icons = [
             let addHtml = '';
             if (IS_CLIENTE) {
                 if (!estEm) {
-                    addHtml = `<button class="card-add-btn" disabled style="opacity:.4;cursor:not-allowed;">IndisponÃ­vel</button>`;
+                    addHtml = `<button class="card-add-btn" disabled style="opacity:.4;cursor:not-allowed;">Indisponível</button>`;
                 } else if (qtdCart > 0) {
                     addHtml = `
                 <div class="qty-controls">
@@ -2309,7 +2299,7 @@ $cat_icons = [
                 </div>`;
                 } else {
                     addHtml = `<button class="card-add-btn" id="modal-btn-${p.id}" onclick="adicionarCarrinho(${p.id},this)">
-                <i class="fas fa-cart-plus"></i> Adicionar Ã  Sacola
+                <i class="fas fa-cart-plus"></i> Adicionar à Sacola
             </button>`;
                 }
             } else {
@@ -2317,9 +2307,9 @@ $cat_icons = [
             }
 
             const stockBadge = p.estoque === 0 ?
-                `<span class="stock-badge stock-out">IndisponÃ­vel</span>` :
+                `<span class="stock-badge stock-out">Indisponível</span>` :
                 p.estoque <= p.minimo ?
-                `<span class="stock-badge stock-low">Ãšltimas unidades</span>` :
+                `<span class="stock-badge stock-low">Últimas unidades</span>` :
                 '';
 
             document.getElementById('modal-content').innerHTML = `
@@ -2332,7 +2322,7 @@ $cat_icons = [
                 <div class="modal-cat">${icon} ${p.categoria}</div>
                 <div class="modal-name">${p.nome}</div>
                 ${stockBadge}
-                <div class="modal-desc">${p.descricao || 'Sem descriÃ§Ã£o disponÃ­vel.'}</div>
+                <div class="modal-desc">${p.descricao || 'Sem descrição disponível.'}</div>
                 <div class="modal-price">R$ ${p.preco.toFixed(2).replace('.',',')}</div>
                 <div class="modal-actions">${addHtml}</div>
             </div>
@@ -2351,9 +2341,9 @@ $cat_icons = [
             if (e.key === 'Escape') fecharModal();
         });
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           ADICIONAR AO CARRINHO
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         async function adicionarCarrinho(id, btn) {
             if (btn) {
                 btn.disabled = true;
@@ -2381,7 +2371,7 @@ $cat_icons = [
 
                 CART_QTD[id] = (CART_QTD[id] || 0) + 1;
 
-                // Trocar botÃ£o por controles de quantidade
+                
                 const footer = document.querySelector(`[data-id="${id}"] .card-footer`);
                 if (footer) {
                     const addBtn = footer.querySelector('.card-add-btn');
@@ -2397,7 +2387,7 @@ $cat_icons = [
                     }
                 }
 
-                // Atualizar modal se aberto
+                
                 const modalBtn = document.getElementById(`modal-btn-${id}`);
                 if (modalBtn) {
                     const qtyDiv = document.createElement('div');
@@ -2409,7 +2399,7 @@ $cat_icons = [
                     modalBtn.replaceWith(qtyDiv);
                 }
 
-                toast('Produto adicionado Ã  sacola! ðŸ›ï¸');
+                toast('Produto adicionado à sacola! 🛍️');
                 await atualizarContadorCarrinho();
             } catch (e) {
                 toast('Erro ao adicionar', 'error');
@@ -2421,22 +2411,22 @@ $cat_icons = [
             }
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           CONTROLE DE QUANTIDADE NO CARD
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         async function mudarQtd(id, delta) {
             const atual = CART_QTD[id] || 0;
             const nova = Math.max(0, atual + delta);
             CART_QTD[id] = nova;
 
-            // Atualiza visualmente
+            
             ['qty-num-' + id, 'modal-qty-' + id].forEach(elId => {
                 const el = document.getElementById(elId);
                 if (el) el.textContent = nova;
             });
 
             if (nova === 0) {
-                // Remove controles e volta ao botÃ£o
+                
                 ['qty-ctrl-' + id].forEach(elId => {
                     const el = document.getElementById(elId);
                     if (el) {
@@ -2450,10 +2440,10 @@ $cat_icons = [
                 });
             }
 
-            // Salvar no servidor
+            
             const fd = new FormData();
             fd.append('ajax_atualizar_quantidade', '1');
-            fd.append('id_carrinho', id); // serÃ¡ tratado pelo carrinho como id_produto na busca
+            fd.append('id_carrinho', id); 
             fd.append('quantidade', nova);
             try {
                 await fetch('ajax_handler.php', {
@@ -2471,9 +2461,9 @@ $cat_icons = [
             } catch (e) {}
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           CONTADOR DO CARRINHO
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         async function atualizarContadorCarrinho() {
             try {
                 const data = await (await fetch('ajax_handler.php?action=contar_carrinho')).json();
@@ -2486,9 +2476,9 @@ $cat_icons = [
             } catch (e) {}
         }
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           MAGNETIC CARDS (efeito nos cards)
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         document.querySelectorAll('.product-card').forEach(card => {
             card.addEventListener('mousemove', e => {
                 const r = card.getBoundingClientRect();
@@ -2503,9 +2493,9 @@ $cat_icons = [
             });
         });
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           INTERSECTION OBSERVER â€” animaÃ§Ã£o ao entrar na tela
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         const observer = new IntersectionObserver(entries => {
             entries.forEach(e => {
                 if (e.isIntersecting) {
@@ -2522,9 +2512,9 @@ $cat_icons = [
             setTimeout(() => observer.observe(c), i * 30);
         });
 
-        /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-           ATUALIZAÃ‡ÃƒO PERIÃ“DICA
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+         
+
+
         setInterval(atualizarContadorCarrinho, 20000);
     </script>
 </body>

@@ -1,9 +1,9 @@
 <?php
 require_once FARMAVIDA_ROOT . '/app/core/bootstrap.php';
-// ============================================================
-// RETORNO DO MERCADO PAGO APÃ“S PAGAMENTO
-// MP redireciona para cÃ¡ com: status, payment_id, preference_id
-// ============================================================
+ 
+ 
+ 
+ 
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/core/helpers.php';
 require_once FARMAVIDA_ROOT . '/app/integrations/mercadopago_config.php';
@@ -12,21 +12,21 @@ $payment_id    = trim((string)($_GET['payment_id'] ?? ''));
 $preference_id = trim((string)($_GET['preference_id'] ?? ''));
 $id_pedido_url = (int)($_GET['pedido'] ?? 0);
 
-// ---- VERIFICAR PAGAMENTO NA API (nÃ£o confiar sÃ³ na URL) ----
+ 
 $pagamento_verificado = null;
 if (!empty($payment_id)) {
     $pagamento_verificado = mp_request('GET', "/v1/payments/$payment_id");
 }
 
-// Mapear status do MP para o nosso
+ 
 function mapear_status_mp(string $status_mp): array {
     return match ($status_mp) {
-        'approved'     => ['pagamento_status' => 'aprovado',    'status_pedido' => 'preparando', 'cor' => '#00875a', 'icone' => 'circle-check',   'titulo' => 'Pagamento Aprovado!',    'msg' => 'Seu pagamento foi confirmado. JÃ¡ estamos separando seu pedido!'],
+        'approved'     => ['pagamento_status' => 'aprovado',    'status_pedido' => 'preparando', 'cor' => '#00875a', 'icone' => 'circle-check',   'titulo' => 'Pagamento Aprovado!',    'msg' => 'Seu pagamento foi confirmado. Já estamos separando seu pedido!'],
         'in_process',
-        'pending'      => ['pagamento_status' => 'em_analise',  'status_pedido' => 'pendente',   'cor' => '#f59e0b', 'icone' => 'clock',           'titulo' => 'Pagamento em AnÃ¡lise',   'msg' => 'Seu pagamento estÃ¡ sendo processado. VocÃª receberÃ¡ uma confirmaÃ§Ã£o em breve.'],
-        'rejected'     => ['pagamento_status' => 'recusado',    'status_pedido' => 'pendente',   'cor' => '#ef4444', 'icone' => 'circle-xmark',    'titulo' => 'Pagamento Recusado',     'msg' => 'Seu pagamento foi recusado. Tente outro cartÃ£o ou forma de pagamento.'],
+        'pending'      => ['pagamento_status' => 'em_analise',  'status_pedido' => 'pendente',   'cor' => '#f59e0b', 'icone' => 'clock',           'titulo' => 'Pagamento em Análise',   'msg' => 'Seu pagamento está sendo processado. Você receberá uma confirmação em breve.'],
+        'rejected'     => ['pagamento_status' => 'recusado',    'status_pedido' => 'pendente',   'cor' => '#ef4444', 'icone' => 'circle-xmark',    'titulo' => 'Pagamento Recusado',     'msg' => 'Seu pagamento foi recusado. Tente outro cartão ou forma de pagamento.'],
         'cancelled'    => ['pagamento_status' => 'cancelado',   'status_pedido' => 'cancelado',  'cor' => '#6b7280', 'icone' => 'ban',             'titulo' => 'Pagamento Cancelado',    'msg' => 'O pagamento foi cancelado.'],
-        default        => ['pagamento_status' => 'pendente',    'status_pedido' => 'pendente',   'cor' => '#f59e0b', 'icone' => 'clock',           'titulo' => 'Aguardando Pagamento',   'msg' => 'Aguardando confirmaÃ§Ã£o do pagamento.'],
+        default        => ['pagamento_status' => 'pendente',    'status_pedido' => 'pendente',   'cor' => '#f59e0b', 'icone' => 'clock',           'titulo' => 'Aguardando Pagamento',   'msg' => 'Aguardando confirmação do pagamento.'],
     };
 }
 
@@ -90,7 +90,7 @@ if ($pagamento_verificado && isset($pagamento_verificado['status'], $pagamento_v
     }
 }
 
-// Status real vem apenas da verificaÃ§Ã£o da API.
+ 
 $status_real = $pagamento_verificado['status'] ?? 'pending';
 $info = mapear_status_mp($status_real);
 
@@ -159,7 +159,7 @@ $payment_id_exibicao = $pedido_verificado ? (string)$pagamento_verificado['id'] 
     <div class="container" style="max-width:560px;">
         <div class="card" style="text-align:center;padding:48px 32px;">
 
-            <!-- ÃCONE STATUS -->
+            
             <div style="width:90px;height:90px;border-radius:50%;background:<?= $info['cor'] ?>1a;border:3px solid <?= $info['cor'] ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">
                 <i class="fas fa-<?= $info['icone'] ?>" style="font-size:40px;color:<?= $info['cor'] ?>;"></i>
             </div>
@@ -173,7 +173,7 @@ $payment_id_exibicao = $pedido_verificado ? (string)$pagamento_verificado['id'] 
             </p>
 
             <?php if ($pedido): ?>
-                <!-- RESUMO DO PEDIDO -->
+                
                 <div style="background:var(--bg);border-radius:var(--radius-md);padding:20px;text-align:left;margin-bottom:28px;border:1px solid var(--light-gray);">
                     <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                         <span style="font-size:13px;color:var(--gray);font-weight:600;">Pedido</span>
@@ -199,7 +199,7 @@ $payment_id_exibicao = $pedido_verificado ? (string)$pagamento_verificado['id'] 
             <?php endif; ?>
 
             <?php if ($info['pagamento_status'] === 'recusado'): ?>
-                <!-- BOTÃƒO TENTAR DE NOVO -->
+                
                 <?php if ($pedido && (int)$pedido['id'] > 0): ?>
                     <a href="criar_preferencia.php?pedido=<?= (int)$pedido['id'] ?>" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-bottom:12px;">
                         <i class="fas fa-rotate-right"></i> Tentar Novamente
@@ -213,7 +213,7 @@ $payment_id_exibicao = $pedido_verificado ? (string)$pagamento_verificado['id'] 
 
             <?php if ($info['pagamento_status'] === 'aprovado'): ?>
                 <p style="margin-top:18px;font-size:12px;color:var(--gray);">
-                    <i class="fas fa-envelope"></i> Um e-mail de confirmaÃ§Ã£o serÃ¡ enviado pelo Mercado Pago.
+                    <i class="fas fa-envelope"></i> Um e-mail de confirmação será enviado pelo Mercado Pago.
                 </p>
             <?php endif; ?>
         </div>
@@ -221,7 +221,7 @@ $payment_id_exibicao = $pedido_verificado ? (string)$pagamento_verificado['id'] 
         <?php if (MP_AMBIENTE === 'sandbox'): ?>
             <div class="alert alert-warning" style="font-size:13px;">
                 <i class="fas fa-flask"></i>
-                <strong>Modo Sandbox ativo.</strong> Use o <a href="https://www.mercadopago.com.br/developers/pt/docs/checkout-pro/additional-content/test-cards" target="_blank" style="color:var(--warning);font-weight:700;">cartÃ£o de teste</a> do Mercado Pago.
+                <strong>Modo Sandbox ativo.</strong> Use o <a href="https://www.mercadopago.com.br/developers/pt/docs/checkout-pro/additional-content/test-cards" target="_blank" style="color:var(--warning);font-weight:700;">cartão de teste</a> do Mercado Pago.
             </div>
         <?php endif; ?>
     </div>

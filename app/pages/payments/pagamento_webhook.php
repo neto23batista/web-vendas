@@ -1,19 +1,19 @@
 <?php
-// ============================================================
-// WEBHOOK / IPN DO MERCADO PAGO
-// O MP chama este endpoint automaticamente quando um pagamento
-// muda de status (aprovado, recusado, cancelado, etc.)
-// ============================================================
+ 
+ 
+ 
+ 
+ 
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/integrations/mercadopago_config.php';
 
-// SÃ³ aceitar POST
+ 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit('Method Not Allowed');
 }
 
-// Ler corpo da requisiÃ§Ã£o
+ 
 $body  = file_get_contents('php://input');
 $dados = json_decode($body, true);
 
@@ -25,7 +25,7 @@ $log_webhook = date('Y-m-d H:i:s')
     . "\n";
 file_put_contents('logs/mp_webhook.log', $log_webhook, FILE_APPEND);
 
-// Tipos de notificaÃ§Ã£o que nos interessam
+ 
 $tipo = $dados['type'] ?? $_GET['topic'] ?? '';
 $id   = $dados['data']['id'] ?? $_GET['id'] ?? '';
 
@@ -34,7 +34,7 @@ if (!in_array($tipo, ['payment', 'merchant_order']) || empty($id)) {
     exit('OK - ignored');
 }
 
-// ---- BUSCAR DETALHES DO PAGAMENTO NA API ----
+ 
 if ($tipo === 'payment') {
     $pagamento = mp_request('GET', "/v1/payments/$id");
 
@@ -49,7 +49,7 @@ if ($tipo === 'payment') {
     $payment_type     = $pagamento['payment_type_id'] ?? '';
     $preference_id    = $pagamento['preference_id'] ?? '';
 
-    // Mapear status
+     
     $pg_status_map = [
         'approved'   => 'aprovado',
         'in_process' => 'em_analise',
@@ -61,7 +61,7 @@ if ($tipo === 'payment') {
     ];
     $pagamento_status = $pg_status_map[$status_mp] ?? 'pendente';
 
-    // Status do pedido conforme pagamento
+     
     $status_pedido_map = [
         'aprovado'   => 'preparando',
         'em_analise' => 'pendente',
@@ -71,7 +71,7 @@ if ($tipo === 'payment') {
     ];
     $status_pedido = $status_pedido_map[$pagamento_status] ?? 'pendente';
 
-    // Buscar pedido por external_reference OU por preference_id
+     
     $id_pedido = 0;
     if ($external_ref > 0) {
         $row = $conn->query("SELECT id FROM pedidos WHERE id=$external_ref AND forma_pagamento='app'")->fetch_assoc();
@@ -103,7 +103,7 @@ if ($tipo === 'payment') {
         $log = date('Y-m-d H:i:s') . " | Webhook processado | Pedido #$id_pedido | Payment $payment_id | Status: $pagamento_status\n";
         file_put_contents('logs/mp_pagamentos.log', $log, FILE_APPEND);
     } else {
-        $log = date('Y-m-d H:i:s') . " | Webhook: pedido nÃ£o encontrado | Payment $payment_id | External ref: $external_ref\n";
+        $log = date('Y-m-d H:i:s') . " | Webhook: pedido não encontrado | Payment $payment_id | External ref: $external_ref\n";
         file_put_contents('logs/mp_pagamentos.log', $log, FILE_APPEND);
     }
 }

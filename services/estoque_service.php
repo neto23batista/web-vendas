@@ -47,7 +47,7 @@ function estoque_inserir_movimentacao(
     if (!$stmt->execute()) {
         $erro = $stmt->error;
         $stmt->close();
-        throw new RuntimeException($erro ?: 'Falha ao registrar movimentaÃ§Ã£o de estoque.');
+        throw new RuntimeException($erro ?: 'Falha ao registrar movimentação de estoque.');
     }
     $stmt->close();
 }
@@ -74,7 +74,7 @@ function estoque_registrar_entrada(mysqli $conn, int $idProduto, int $quantidade
     try {
         $produto = estoque_buscar_produto_para_update($conn, $idProduto);
         if (!$produto) {
-            throw new RuntimeException('Produto nÃ£o encontrado.');
+            throw new RuntimeException('Produto não encontrado.');
         }
 
         $antes = (int)$produto['estoque_atual'];
@@ -95,12 +95,12 @@ function estoque_registrar_saida(mysqli $conn, int $idProduto, int $quantidade, 
     try {
         $produto = estoque_buscar_produto_para_update($conn, $idProduto);
         if (!$produto) {
-            throw new RuntimeException('Produto nÃ£o encontrado.');
+            throw new RuntimeException('Produto não encontrado.');
         }
 
         $antes = (int)$produto['estoque_atual'];
         if ($antes < $quantidade) {
-            throw new RuntimeException('Estoque insuficiente para realizar a saÃ­da.');
+            throw new RuntimeException('Estoque insuficiente para realizar a saída.');
         }
 
         $depois = $antes - $quantidade;
@@ -120,7 +120,7 @@ function estoque_registrar_ajuste(mysqli $conn, int $idProduto, int $novoEstoque
     try {
         $produto = estoque_buscar_produto_para_update($conn, $idProduto);
         if (!$produto) {
-            throw new RuntimeException('Produto nÃ£o encontrado.');
+            throw new RuntimeException('Produto não encontrado.');
         }
 
         $antes = (int)$produto['estoque_atual'];
@@ -149,7 +149,7 @@ function estoque_registrar_transferencia(
     try {
         $produto = estoque_buscar_produto_para_update($conn, $idProduto);
         if (!$produto) {
-            throw new RuntimeException('Produto nÃ£o encontrado.');
+            throw new RuntimeException('Produto não encontrado.');
         }
 
         $antes = (int)$produto['estoque_atual'];
@@ -185,7 +185,7 @@ function estoque_atualizar_limites(
 function estoque_baixar_item_pedido(mysqli $conn, int $idProduto, int $quantidade, int $idPedido, ?int $idUsuario = null): array {
     $produto = estoque_buscar_produto_para_update($conn, $idProduto);
     if (!$produto) {
-        throw new RuntimeException("Produto #$idProduto nÃ£o encontrado.");
+        throw new RuntimeException("Produto #$idProduto não encontrado.");
     }
 
     $antes = (int)$produto['estoque_atual'];
@@ -202,7 +202,7 @@ function estoque_baixar_item_pedido(mysqli $conn, int $idProduto, int $quantidad
         $quantidade,
         $antes,
         $depois,
-        "Baixa automÃ¡tica â€“ Pedido #$idPedido",
+        "Baixa automática – Pedido #$idPedido",
         $idUsuario,
         $idPedido
     );

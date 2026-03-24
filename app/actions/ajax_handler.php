@@ -8,16 +8,16 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-// Statuses permitidos â€” whitelist explÃ­cita
+ 
 const STATUS_VALIDOS = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
 
 switch ($action) {
 
     case 'buscar_pedidos_dono':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
-        // Sem input do usuÃ¡rio nesta query â€” apenas sessÃ£o validada
+         
         $pedidos = $conn->query(
             "SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
              FROM pedidos p
@@ -43,11 +43,11 @@ switch ($action) {
         echo json_encode(['pedidos' => $pedidos]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'buscar_stats_dono':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         $stats = $conn->query(
             "SELECT COUNT(DISTINCT id) as total_pedidos,
@@ -71,11 +71,11 @@ switch ($action) {
         ]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'atualizar_status':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         verificar_csrf();
 
@@ -95,12 +95,12 @@ switch ($action) {
         }
         break;
 
-        // âœ… Whitelist â€” rejeita qualquer valor fora dos permitidos
+         
         if ($id_pedido <= 0 || !in_array($status, STATUS_VALIDOS, true)) {
-            echo json_encode(['erro' => 'Dados invÃ¡lidos']); exit;
+            echo json_encode(['erro' => 'Dados inválidos']); exit;
         }
 
-        // Busca status atual para detectar transiÃ§Ã£o â†’ entregue
+         
         $conn->begin_transaction();
         $stmt = $conn->prepare("SELECT status FROM pedidos WHERE id = ? FOR UPDATE");
         $stmt->bind_param("i", $id_pedido);
@@ -114,10 +114,10 @@ switch ($action) {
 
         if (!$pedido_atual) {
             $conn->rollback();
-            echo json_encode(['erro' => 'Pedido nÃƒÂ£o encontrado']); exit;
+            echo json_encode(['erro' => 'Pedido não encontrado']); exit;
         }
 
-        // âœ… Prepared statement para o UPDATE
+         
         $stmt = $conn->prepare("UPDATE pedidos SET status = ? WHERE id = ?");
         $stmt->bind_param("si", $status, $id_pedido);
         if (!$stmt->execute()) {
@@ -127,7 +127,7 @@ switch ($action) {
         }
         $stmt->close();
 
-        // Baixa de estoque ao marcar como entregue
+         
         if ($status === 'entregue' && $pedido_atual && $pedido_atual['status'] !== 'entregue') {
             $stmt_itens = $conn->prepare(
                 "SELECT id_produto, quantidade FROM pedido_itens WHERE id_pedido = ?"
@@ -171,8 +171,8 @@ switch ($action) {
                     }
                     $stmt_up->close();
 
-                    // Registra movimentaÃ§Ã£o
-                    $motivo    = "Baixa automÃ¡tica â€“ Pedido #$id_pedido";
+                     
+                    $motivo    = "Baixa automática – Pedido #$id_pedido";
                     $tipo_baixa = 'saida';
                     $stmt_mov = $conn->prepare(
                         "INSERT INTO movimentacoes_estoque
@@ -188,7 +188,7 @@ switch ($action) {
                     if (!$stmt_mov->execute()) {
                         $stmt_mov->close();
                         $conn->rollback();
-                        echo json_encode(['erro' => 'Falha ao registrar a movimentaÃƒÂ§ÃƒÂ£o']); exit;
+                        echo json_encode(['erro' => 'Falha ao registrar a movimentação']); exit;
                     }
                     $stmt_mov->close();
                 }
@@ -199,11 +199,11 @@ switch ($action) {
         echo json_encode(['sucesso' => true, 'mensagem' => 'Status atualizado!']);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'buscar_pedidos_cliente':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         $id_cliente = (int)$_SESSION['id_usuario'];
 
@@ -224,11 +224,11 @@ switch ($action) {
         echo json_encode(['pedidos' => $pedidos]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'buscar_status_pedido':
         if (!isset($_SESSION['usuario'])) {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['pedido' => null]); exit; }
@@ -252,11 +252,11 @@ switch ($action) {
         echo json_encode(['pedido' => $pedido]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'pedir_conta':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         verificar_csrf();
         $id_pedido  = (int)($_POST['id_pedido'] ?? 0);
@@ -272,7 +272,7 @@ switch ($action) {
         $stmt->close();
 
         if (!$pedido) {
-            echo json_encode(['erro' => 'Pedido nÃ£o encontrado ou nÃ£o estÃ¡ pronto']); exit;
+            echo json_encode(['erro' => 'Pedido não encontrado ou não está pronto']); exit;
         }
 
         $stmt = $conn->prepare(
@@ -285,7 +285,7 @@ switch ($action) {
         echo json_encode(['sucesso' => true, 'mensagem' => 'Pagamento solicitado com sucesso!']);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'contar_carrinho':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
@@ -304,11 +304,11 @@ switch ($action) {
         echo json_encode(['count' => $count]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'atualizar_quantidade_carrinho':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         verificar_csrf();
         $id_cliente  = (int)$_SESSION['id_usuario'];
@@ -354,16 +354,16 @@ switch ($action) {
         ]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     case 'buscar_carrinho':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         $id_cliente = (int)$_SESSION['id_usuario'];
 
         $stmt = $conn->prepare(
-            "SELECT c.*, p.nome, p.descricao, p.preco, p.imagem
+            "SELECT c.*, p.nome, p.descricao, p.preco, p.imagem, p.categoria
              FROM carrinho c
              JOIN produtos p ON c.id_produto = p.id
              WHERE c.id_cliente = ? AND p.disponivel = 1"
@@ -374,7 +374,11 @@ switch ($action) {
         $stmt->close();
 
         $total = 0;
-        foreach ($itens as $item) { $total += $item['preco'] * $item['quantidade']; }
+        foreach ($itens as &$item) {
+            $item['imagem'] = url_imagem_produto($item['imagem'] ?? null, $item['nome'] ?? 'Produto', $item['categoria'] ?? 'Sem categoria');
+            $total += $item['preco'] * $item['quantidade'];
+        }
+        unset($item);
 
         echo json_encode([
             'itens'           => $itens,
@@ -383,12 +387,12 @@ switch ($action) {
         ]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
-    // âœ… alertas_estoque DENTRO do switch â€” corrige o bug de saÃ­da JSON dupla
+     
     case 'alertas_estoque':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
+            echo json_encode(['erro' => 'Não autorizado']); exit;
         }
         $zerados = $conn->query(
             "SELECT COUNT(*) as t FROM produtos WHERE estoque_atual = 0"
@@ -412,8 +416,8 @@ switch ($action) {
         ]);
         break;
 
-    // -----------------------------------------------------------------
+     
 
     default:
-        echo json_encode(['erro' => 'AÃ§Ã£o nÃ£o reconhecida']);
+        echo json_encode(['erro' => 'Ação não reconhecida']);
 }

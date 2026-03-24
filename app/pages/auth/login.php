@@ -117,8 +117,8 @@ if (!$bloqueado && $_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <div class="links">
-            <p>NÃ£o tem conta? <a href="cadastro.php">Cadastre-se grÃ¡tis</a></p>
-            <p><a href="index.php"><i class="fas fa-arrow-left"></i> Voltar Ã  loja</a></p>
+            <p>Não tem conta? <a href="cadastro.php">Cadastre-se grátis</a></p>
+            <p><a href="index.php"><i class="fas fa-arrow-left"></i> Voltar à loja</a></p>
         </div>
     </div>
 </body>

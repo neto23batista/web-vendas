@@ -8,7 +8,7 @@ verificar_login('dono');
 $id_pedido = (int) ($_GET['id'] ?? 0);
 
 $pedido = $conn->query("SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco FROM pedidos p JOIN usuarios u ON p.id_cliente = u.id WHERE p.id = $id_pedido")->fetch_assoc();
-if (!$pedido) die("Pedido nÃ£o encontrado!");
+if (!$pedido) die("Pedido não encontrado!");
 
 $itens = $conn->query("SELECT pi.*, pr.nome as produto_nome FROM pedido_itens pi JOIN produtos pr ON pi.id_produto = pr.id WHERE pi.id_pedido = $id_pedido")->fetch_all(MYSQLI_ASSOC);
 
@@ -51,16 +51,16 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
 </head>
 <body>
     <div class="botoes-tela">
-        <button onclick="window.print()" class="btn btn-imprimir">ðŸ–¨ï¸ IMPRIMIR NOTA</button>
-        <a href="painel_dono.php" class="btn btn-voltar">â† VOLTAR</a>
+        <button onclick="window.print()" class="btn btn-imprimir">🖨️ IMPRIMIR NOTA</button>
+        <a href="painel_dono.php" class="btn btn-voltar">← VOLTAR</a>
     </div>
 
     <div class="receipt">
         <div class="header-receipt">
-            <div class="logo-receipt">ðŸ’Š Farma<span>Vida</span></div>
+            <div class="logo-receipt">💊 Farma<span>Vida</span></div>
             <div class="info-rest">
-                <strong>FarmÃ¡cia e Drogaria FarmaVida</strong><br>
-                Av. da SaÃºde, 456 â€“ Centro<br>
+                <strong>Farmácia e Drogaria FarmaVida</strong><br>
+                Av. da Saúde, 456 – Centro<br>
                 Telefone: (17) 99999-1234<br>
                 CNPJ: 12.345.678/0001-00<br>
                 CRF: 12345
@@ -69,19 +69,19 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
 
         <div class="info-pedido">
             <table>
-                <tr><td>Pedido NÂº:</td><td><strong>#<?= $id_pedido ?></strong></td></tr>
+                <tr><td>Pedido Nº:</td><td><strong>#<?= $id_pedido ?></strong></td></tr>
                 <tr><td>Data/Hora:</td><td><?= date('d/m/Y H:i:s', strtotime($pedido['criado_em'])) ?></td></tr>
                 <tr><td>Status:</td><td><span class="status-badge"><?= $status_labels[$pedido['status']] ?></span></td></tr>
                 <tr><td>Cliente:</td><td><?= htmlspecialchars($pedido['cliente_nome']) ?></td></tr>
                 <?php if ($pedido['telefone']): ?><tr><td>Telefone:</td><td><?= htmlspecialchars($pedido['telefone']) ?></td></tr><?php endif; ?>
-                <?php if ($pedido['endereco']): ?><tr><td>EndereÃ§o:</td><td><?= htmlspecialchars($pedido['endereco']) ?></td></tr><?php endif; ?>
+                <?php if ($pedido['endereco']): ?><tr><td>Endereço:</td><td><?= htmlspecialchars($pedido['endereco']) ?></td></tr><?php endif; ?>
             </table>
         </div>
 
         <table class="itens-tabela">
             <thead>
                 <tr>
-                    <th>QTD</th><th>PRODUTO</th><th style="text-align:right;">PREÃ‡O UN.</th><th style="text-align:right;">SUBTOTAL</th>
+                    <th>QTD</th><th>PRODUTO</th><th style="text-align:right;">PREÇO UN.</th><th style="text-align:right;">SUBTOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,7 +97,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
         </table>
 
         <?php if ($pedido['observacoes']): ?>
-            <div class="obs-box"><strong>âš ï¸ OBSERVAÃ‡Ã•ES:</strong> <?= htmlspecialchars($pedido['observacoes']) ?></div>
+            <div class="obs-box"><strong>⚠️ OBSERVAÇÕES:</strong> <?= htmlspecialchars($pedido['observacoes']) ?></div>
         <?php endif; ?>
 
         <div class="total-section">
@@ -107,9 +107,9 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
         </div>
 
         <div class="footer-receipt">
-            <strong>OBRIGADO PELA CONFIANÃ‡A! ðŸ’Š</strong><br>
-            Cuide bem da sua saÃºde â€” FarmaVida estÃ¡ aqui para vocÃª!<br>
-            <small>Este documento nÃ£o substitui nota fiscal eletrÃ´nica.<br>DispensaÃ§Ã£o sob responsabilidade do farmacÃªutico habilitado.</small>
+            <strong>OBRIGADO PELA CONFIANÇA! 💊</strong><br>
+            Cuide bem da sua saúde — FarmaVida está aqui para você!<br>
+            <small>Este documento não substitui nota fiscal eletrônica.<br>Dispensação sob responsabilidade do farmacêutico habilitado.</small>
         </div>
     </div>
 </body>

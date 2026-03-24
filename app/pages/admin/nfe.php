@@ -15,7 +15,7 @@ if (schema_componentes_pendentes($conn, ['nfe'])) {
 
 if (false) {
 
-// â”€â”€ AUTO-MIGRAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $existentes = array_column($conn->query("SHOW COLUMNS FROM pedidos")->fetch_all(MYSQLI_ASSOC), 'Field');
 $sqls_pedidos = [
     'nfe_numero'        => "ALTER TABLE pedidos ADD COLUMN nfe_numero VARCHAR(9) DEFAULT NULL",
@@ -45,16 +45,16 @@ if (!in_array('cpf', $cols_usr)) {
     $conn->query("ALTER TABLE usuarios ADD COLUMN cpf VARCHAR(14) DEFAULT NULL AFTER telefone");
 }
 
-// â”€â”€ CONFIGURAÃ‡Ã•ES DA EMPRESA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 }
 
 $empresa = [
-    'razao_social' => 'FARMAVIDA FARMÃCIA E DROGARIA LTDA',
+    'razao_social' => 'FARMAVIDA FARMÁCIA E DROGARIA LTDA',
     'nome_fantasia' => 'FarmaVida',
     'cnpj'         => '12.345.678/0001-00',
     'ie'           => '123.456.789.000',
     'crt'          => '1',
-    'endereco'     => 'Av. da SaÃºde, 456',
+    'endereco'     => 'Av. da Saúde, 456',
     'numero'       => '456',
     'bairro'       => 'Centro',
     'municipio'    => 'Votuporanga',
@@ -64,11 +64,11 @@ $empresa = [
     'email'        => 'fiscal@farmavida.com.br',
 ];
 
-// â”€â”€ AÃ‡Ã•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $acao      = $_GET['acao']   ?? 'listar';
 $id_pedido = (int)($_GET['id'] ?? 0);
 
-// â”€â”€ EMITIR NF-e â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if ($acao === 'emitir' && $id_pedido > 0) {
     $stmt = $conn->prepare(
         "SELECT p.*, u.nome AS cliente_nome, u.email AS cliente_email,
@@ -102,7 +102,7 @@ if ($acao === 'emitir' && $id_pedido > 0) {
     }
 }
 
-// â”€â”€ CANCELAR NF-e â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if ($acao === 'cancelar' && $id_pedido > 0) {
     $justificativa = sanitizar_texto($_POST['justificativa'] ?? '');
     if (strlen($justificativa) < 15) {
@@ -120,7 +120,7 @@ if ($acao === 'cancelar' && $id_pedido > 0) {
     header("Location: nfe.php"); exit;
 }
 
-// â”€â”€ GERAR CHAVE NF-e â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 function gerar_chave_nfe(string $uf, array $pedido, string $numero, string $serie): string {
     $cuf   = ['SP'=>'35','RJ'=>'33','MG'=>'31'][$uf] ?? '35';
     $aamm  = date('ym', strtotime($pedido['criado_em']));
@@ -141,23 +141,23 @@ function gerar_chave_nfe(string $uf, array $pedido, string $numero, string $seri
     return $chave . $dv;
 }
 
-// â”€â”€ LISTAGEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $busca_nfe  = $_GET['busca'] ?? '';
 $filtro_st  = $_GET['st']    ?? '';
 $pagina_nfe = max(1, (int)($_GET['pagina'] ?? 1));
 $por_pag    = 30;
 $offset_nfe = ($pagina_nfe - 1) * $por_pag;
 
-// Status permitidos â€” whitelist para evitar injeÃ§Ã£o no WHERE
+ 
 $status_validos_nfe = ['pendente', 'emitida', 'cancelada'];
 
-// Monta query segura com prepared statements
+ 
 $conditions = [];
 $params      = [];
 $types       = '';
 
 if ($busca_nfe !== '') {
-    // Se for nÃºmero, busca por id; senÃ£o, busca por nome do cliente
+     
     if (ctype_digit(trim($busca_nfe))) {
         $conditions[] = "p.id = ?";
         $params[]     = (int)$busca_nfe;
@@ -178,7 +178,7 @@ if ($filtro_st !== '' && in_array($filtro_st, $status_validos_nfe, true)) {
 
 $where_sql = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
 
-// Total para paginaÃ§Ã£o
+ 
 $sql_count = "SELECT COUNT(*) as t FROM pedidos p JOIN usuarios u ON p.id_cliente = u.id $where_sql";
 $stmt_count = $conn->prepare($sql_count);
 if ($params) $stmt_count->bind_param($types, ...$params);
@@ -187,7 +187,7 @@ $total_nfe    = (int)$stmt_count->get_result()->fetch_assoc()['t'];
 $total_pag_nfe = (int)ceil($total_nfe / $por_pag);
 $stmt_count->close();
 
-// Listagem paginada
+ 
 $sql_lista = "SELECT p.id, p.total, p.status, p.criado_em,
                      p.nfe_numero, p.nfe_serie, p.nfe_chave, p.nfe_status, p.nfe_emitida_em,
                      u.nome AS cliente_nome
@@ -205,7 +205,7 @@ $stmt_lista->execute();
 $pedidos_lista = $stmt_lista->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt_lista->close();
 
-// â”€â”€ DANFE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $pedido_danfe = null;
 $itens_danfe  = [];
 if ($acao === 'danfe' && $id_pedido > 0) {
@@ -241,7 +241,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NF-e â€“ FarmaVida</title>
+    <title>NF-e – FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=1774207549">
     <style>
@@ -288,7 +288,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
         <div class="header-container">
             <div class="logo" style="cursor:default;">
                 <div class="logo-icon"><i class="fas fa-file-invoice"></i></div>
-                Nota Fiscal EletrÃ´nica
+                Nota Fiscal Eletrônica
             </div>
             <div class="nav-buttons">
                 <?php if ($acao === 'danfe'): ?>
@@ -320,47 +320,47 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
         <div class="danfe">
             <div class="danfe-header">
                 <div class="danfe-logo">
-                    <strong style="font-size:18px;color:#00875a;">ðŸ’Š</strong>
+                    <strong style="font-size:18px;color:#00875a;">💊</strong>
                     <strong style="font-size:13px;"><?= htmlspecialchars($empresa['nome_fantasia']) ?></strong>
                     <span style="font-size:9px;">DANFE</span>
                 </div>
                 <div class="danfe-empresa">
                     <strong style="font-size:13px;"><?= htmlspecialchars($empresa['razao_social']) ?></strong><br>
-                    <?= htmlspecialchars($empresa['endereco']) ?>, <?= htmlspecialchars($empresa['numero']) ?> â€“ <?= htmlspecialchars($empresa['bairro']) ?><br>
-                    <?= htmlspecialchars($empresa['municipio']) ?>/<?= htmlspecialchars($empresa['uf']) ?> â€“ CEP: <?= htmlspecialchars($empresa['cep']) ?><br>
+                    <?= htmlspecialchars($empresa['endereco']) ?>, <?= htmlspecialchars($empresa['numero']) ?> – <?= htmlspecialchars($empresa['bairro']) ?><br>
+                    <?= htmlspecialchars($empresa['municipio']) ?>/<?= htmlspecialchars($empresa['uf']) ?> – CEP: <?= htmlspecialchars($empresa['cep']) ?><br>
                     Fone: <?= htmlspecialchars($empresa['telefone']) ?><br>
                     CNPJ: <?= htmlspecialchars($empresa['cnpj']) ?> &nbsp;|&nbsp; IE: <?= htmlspecialchars($empresa['ie']) ?><br>
                     <small>CRT: <?= $empresa['crt'] === '1' ? 'Simples Nacional' : 'Regime Normal' ?></small>
                 </div>
                 <div class="danfe-chave">
                     <strong style="font-size:10px;">NF-e</strong><br>
-                    <strong>NÂº <?= htmlspecialchars($pedido_danfe['nfe_numero'] ?? '000000000') ?> â€“ SÃ©rie <?= htmlspecialchars($pedido_danfe['nfe_serie'] ?? '001') ?></strong><br><br>
+                    <strong>Nº <?= htmlspecialchars($pedido_danfe['nfe_numero'] ?? '000000000') ?> – Série <?= htmlspecialchars($pedido_danfe['nfe_serie'] ?? '001') ?></strong><br><br>
                     <strong>Chave de Acesso:</strong><br>
                     <span style="word-break:break-all;font-size:9px;"><?= chunk_split(htmlspecialchars($pedido_danfe['nfe_chave'] ?? str_repeat('0', 44)), 4, ' ') ?></span><br><br>
-                    <strong>Data de EmissÃ£o:</strong><br>
+                    <strong>Data de Emissão:</strong><br>
                     <?= date('d/m/Y H:i', strtotime($pedido_danfe['nfe_emitida_em'] ?? $pedido_danfe['criado_em'])) ?><br><br>
-                    <strong>Natureza da OperaÃ§Ã£o:</strong><br>
+                    <strong>Natureza da Operação:</strong><br>
                     VENDA A CONSUMIDOR
                 </div>
             </div>
 
             <div class="danfe-section">
-                <div class="danfe-section-title">DESTINATÃRIO / REMETENTE</div>
+                <div class="danfe-section-title">DESTINATÁRIO / REMETENTE</div>
                 <div class="danfe-grid" style="grid-template-columns:2fr 1fr 1fr;">
-                    <div class="danfe-field"><span class="danfe-label">Nome / RazÃ£o Social</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['cliente_nome']) ?></span></div>
+                    <div class="danfe-field"><span class="danfe-label">Nome / Razão Social</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['cliente_nome']) ?></span></div>
                     <div class="danfe-field"><span class="danfe-label">CPF/CNPJ</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['cpf'] ?? 'CONSUMIDOR FINAL') ?></span></div>
                     <div class="danfe-field"><span class="danfe-label">Data de Entrega</span><span class="danfe-value"><?= date('d/m/Y') ?></span></div>
                 </div>
                 <div class="danfe-grid" style="grid-template-columns:2fr 1fr;">
-                    <div class="danfe-field"><span class="danfe-label">EndereÃ§o</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['endereco'] ?? 'â€”') ?></span></div>
-                    <div class="danfe-field"><span class="danfe-label">Fone / E-mail</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['telefone'] ?? $pedido_danfe['cliente_email'] ?? 'â€”') ?></span></div>
+                    <div class="danfe-field"><span class="danfe-label">Endereço</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['endereco'] ?? '—') ?></span></div>
+                    <div class="danfe-field"><span class="danfe-label">Fone / E-mail</span><span class="danfe-value"><?= htmlspecialchars($pedido_danfe['telefone'] ?? $pedido_danfe['cliente_email'] ?? '—') ?></span></div>
                 </div>
             </div>
 
             <div class="danfe-section danfe-items">
-                <div class="danfe-section-title">DADOS DOS PRODUTOS / SERVIÃ‡OS</div>
+                <div class="danfe-section-title">DADOS DOS PRODUTOS / SERVIÇOS</div>
                 <table>
-                    <thead><tr><th>#</th><th>DescriÃ§Ã£o do Produto</th><th>Categoria</th><th>Qtd</th><th>Un</th><th>Vl. Unit.</th><th>Vl. Total</th></tr></thead>
+                    <thead><tr><th>#</th><th>Descrição do Produto</th><th>Categoria</th><th>Qtd</th><th>Un</th><th>Vl. Unit.</th><th>Vl. Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($itens_danfe as $i => $item): ?>
                         <tr>
@@ -378,11 +378,11 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
             </div>
 
             <div class="danfe-section">
-                <div class="danfe-section-title">CÃLCULO DO IMPOSTO</div>
+                <div class="danfe-section-title">CÁLCULO DO IMPOSTO</div>
                 <div class="danfe-totais">
                     <div class="danfe-totais-lado">
                         <div class="danfe-grid" style="grid-template-columns:1fr 1fr;">
-                            <div class="danfe-field"><span class="danfe-label">Base de CÃ¡lculo ICMS</span><span class="danfe-value">R$ <?= number_format($pedido_danfe['total'], 2, ',', '.') ?></span></div>
+                            <div class="danfe-field"><span class="danfe-label">Base de Cálculo ICMS</span><span class="danfe-value">R$ <?= number_format($pedido_danfe['total'], 2, ',', '.') ?></span></div>
                             <div class="danfe-field"><span class="danfe-label">Valor ICMS</span><span class="danfe-value">R$ 0,00</span></div>
                             <div class="danfe-field"><span class="danfe-label">Valor PIS</span><span class="danfe-value">R$ 0,00</span></div>
                             <div class="danfe-field"><span class="danfe-label">Valor COFINS</span><span class="danfe-value">R$ 0,00</span></div>
@@ -400,7 +400,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
                 <p style="padding:6px 8px;font-size:10px;">
                     Pedido: #<?= (int)$pedido_danfe['id'] ?> |
                     <?= htmlspecialchars($pedido_danfe['observacoes'] ?? 'Venda ao consumidor final.') ?><br>
-                    Documento emitido pelo sistema FarmaVida. Este documento nÃ£o tem valor fiscal atÃ© autorizaÃ§Ã£o SEFAZ.
+                    Documento emitido pelo sistema FarmaVida. Este documento não tem valor fiscal até autorização SEFAZ.
                 </p>
             </div>
         </div>
@@ -416,7 +416,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
                 <h3 style="font-family:'Sora',sans-serif;color:var(--danger);margin-bottom:16px;"><i class="fas fa-ban"></i> Cancelar NF-e</h3>
                 <form method="POST" action="nfe.php?acao=cancelar&id=<?= (int)$id_pedido ?>">
                     <div class="form-group">
-                        <label><i class="fas fa-comment"></i> Justificativa (mÃ­nimo 15 caracteres) *</label>
+                        <label><i class="fas fa-comment"></i> Justificativa (mínimo 15 caracteres) *</label>
                         <textarea name="justificativa" rows="3" required minlength="15" placeholder="Motivo do cancelamento..."></textarea>
                     </div>
                     <div style="display:flex;gap:10px;">
@@ -434,10 +434,10 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
             <div style="display:flex;align-items:flex-start;gap:12px;">
                 <i class="fas fa-circle-info" style="color:#d97706;font-size:20px;margin-top:2px;flex-shrink:0;"></i>
                 <div>
-                    <strong style="color:#92400e;display:block;margin-bottom:6px;">âš™ï¸ ConfiguraÃ§Ã£o necessÃ¡ria para emissÃ£o real</strong>
+                    <strong style="color:#92400e;display:block;margin-bottom:6px;">⚙️ Configuração necessária para emissão real</strong>
                     <div style="font-size:13px;color:#78350f;line-height:1.8;">
-                        Para emitir NF-e com validade jurÃ­dica, configure: <strong>Certificado Digital A1/A3</strong> Â·
-                        <strong>CNPJ e IE corretos</strong> Â· IntegraÃ§Ã£o SEFAZ via
+                        Para emitir NF-e com validade jurídica, configure: <strong>Certificado Digital A1/A3</strong> ·
+                        <strong>CNPJ e IE corretos</strong> · Integração SEFAZ via
                         <a href="https://focusnfe.com.br" target="_blank" style="color:#0052cc;">Focus NFe</a>,
                         <a href="https://nfe.io" target="_blank" style="color:#0052cc;">NFe.io</a> ou
                         <a href="https://tecnospeed.com.br" target="_blank" style="color:#0052cc;">Tecnospeed</a>.
@@ -459,7 +459,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
 
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
                 <form method="GET" style="display:flex;gap:8px;flex:1;min-width:240px;">
-                    <input type="text" name="busca" placeholder="ðŸ” NÂº do pedido ou nome do cliente..."
+                    <input type="text" name="busca" placeholder="🔍 Nº do pedido ou nome do cliente..."
                            value="<?= htmlspecialchars($busca_nfe) ?>" style="flex:1;border-radius:var(--radius-full);">
                     <select name="st" style="border-radius:var(--radius-full);">
                         <option value="">Todos os status</option>
@@ -479,7 +479,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
             <div style="overflow-x:auto;">
                 <table class="nfe-table">
                     <thead>
-                        <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Valor</th><th>NÂº NF-e</th><th>Status</th><th>AÃ§Ãµes</th></tr>
+                        <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Valor</th><th>Nº NF-e</th><th>Status</th><th>Ações</th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($pedidos_lista as $p):
@@ -490,7 +490,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
                             <td><?= htmlspecialchars($p['cliente_nome']) ?></td>
                             <td style="white-space:nowrap;color:var(--gray);font-size:12px;"><?= date('d/m/Y H:i', strtotime($p['criado_em'])) ?></td>
                             <td style="font-weight:700;color:var(--primary);"><?= formatar_preco($p['total']) ?></td>
-                            <td style="font-size:12px;"><?= $p['nfe_numero'] ? htmlspecialchars($p['nfe_numero']).'/'.$p['nfe_serie'] : 'â€”' ?></td>
+                            <td style="font-size:12px;"><?= $p['nfe_numero'] ? htmlspecialchars($p['nfe_numero']).'/'.$p['nfe_serie'] : '—' ?></td>
                             <td>
                                 <span class="nfe-badge nfe-<?= $st ?>">
                                     <i class="fas fa-<?= $st==='emitida'?'check-circle':($st==='cancelada'?'ban':'clock') ?>"></i>
@@ -509,7 +509,7 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
                                         <i class="fas fa-paper-plane"></i> Emitir
                                     </a>
                                 <?php else: ?>
-                                    <span style="font-size:12px;color:var(--gray);">â€”</span>
+                                    <span style="font-size:12px;color:var(--gray);">—</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -528,9 +528,9 @@ unset($_SESSION['sucesso'], $_SESSION['erro']);
                     <?php else: ?><a href="?pagina=<?= $i ?>&busca=<?= urlencode($busca_nfe) ?>&st=<?= urlencode($filtro_st) ?>"><?= $i ?></a><?php endif; ?>
                 <?php endfor; ?>
                 <?php if ($pagina_nfe < $total_pag_nfe): ?>
-                    <a href="?pagina=<?= $pagina_nfe+1 ?>&busca=<?= urlencode($busca_nfe) ?>&st=<?= urlencode($filtro_st) ?>">PrÃ³xima &#8594;</a>
+                    <a href="?pagina=<?= $pagina_nfe+1 ?>&busca=<?= urlencode($busca_nfe) ?>&st=<?= urlencode($filtro_st) ?>">Próxima &#8594;</a>
                 <?php endif; ?>
-                <span style="color:var(--gray);padding:7px 0;">PÃ¡gina <?= $pagina_nfe ?> de <?= $total_pag_nfe ?></span>
+                <span style="color:var(--gray);padding:7px 0;">Página <?= $pagina_nfe ?> de <?= $total_pag_nfe ?></span>
             </div>
             <?php endif; ?>
 

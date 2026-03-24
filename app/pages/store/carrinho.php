@@ -9,10 +9,10 @@ verificar_login('cliente');
 
 $id_cliente = $_SESSION['id_usuario'];
 
-// Taxa de entrega â€” definida em um Ãºnico lugar
+ 
 const TAXA_DELIVERY_VALOR = 5.00;
 
-// â”€â”€ ADICIONAR AO CARRINHO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['adicionar_carrinho'])) {
     verificar_csrf();
     $id_produto = (int)($_POST['id_produto'] ?? 0);
@@ -53,13 +53,13 @@ if (isset($_POST['adicionar_carrinho'])) {
             strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             echo json_encode(['sucesso' => true]); exit;
         }
-        redirecionar($_POST['redirect'] ?? 'carrinho.php', 'Produto adicionado Ã  sacola!');
+        redirecionar($_POST['redirect'] ?? 'carrinho.php', 'Produto adicionado à sacola!');
     } else {
-        redirecionar('index.php', 'Produto nÃ£o disponÃ­vel!', 'erro');
+        redirecionar('index.php', 'Produto não disponível!', 'erro');
     }
 }
 
-// â”€â”€ ATUALIZAR QUANTIDADE VIA AJAX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['ajax_atualizar_quantidade'])) {
     verificar_csrf();
     header('Content-Type: application/json');
@@ -120,7 +120,7 @@ if (isset($_POST['ajax_atualizar_quantidade'])) {
     exit;
 }
 
-// â”€â”€ REMOVER ITEM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['remover_item'])) {
     verificar_csrf();
     $id_item = (int)($_POST['id_item'] ?? 0);
@@ -137,7 +137,7 @@ if (isset($_POST['remover_item'])) {
     redirecionar('carrinho.php', 'Item removido!');
 }
 
-// â”€â”€ LIMPAR CARRINHO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['limpar_carrinho'])) {
     verificar_csrf();
     $stmt = $conn->prepare("DELETE FROM carrinho WHERE id_cliente = ?");
@@ -153,7 +153,7 @@ if (isset($_POST['limpar_carrinho'])) {
     redirecionar('carrinho.php', 'Sacola esvaziada!');
 }
 
-// â”€â”€ FINALIZAR PEDIDO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['finalizar_pedido'])) {
     verificar_csrf();
 
@@ -168,13 +168,13 @@ if (isset($_POST['finalizar_pedido'])) {
     if ($tipo_retirada === 'delivery') {
         $endereco_entrega = sanitizar_texto($_POST['endereco_entrega'] ?? '');
         if (empty($endereco_entrega)) {
-            redirecionar('carrinho.php', 'Por favor, informe o endereÃ§o de entrega!', 'erro');
+            redirecionar('carrinho.php', 'Por favor, informe o endereço de entrega!', 'erro');
         }
         $taxa_fmt    = formatar_preco(TAXA_DELIVERY_VALOR);
-        $prefixo     = "ðŸ“¦ DELIVERY â€“ EndereÃ§o: $endereco_entrega | Taxa: $taxa_fmt | ðŸ’³ $label_pagamento";
+        $prefixo     = "📦 DELIVERY – Endereço: $endereco_entrega | Taxa: $taxa_fmt | 💳 $label_pagamento";
         $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
     } else {
-        $prefixo     = "ðŸª RETIRADA NO LOCAL | ðŸ’³ $label_pagamento";
+        $prefixo     = "🏪 RETIRADA NO LOCAL | 💳 $label_pagamento";
         $observacoes = $prefixo . ($observacoes ? " | Obs: $observacoes" : '');
     }
 
@@ -189,7 +189,7 @@ if (isset($_POST['finalizar_pedido'])) {
         );
     } catch (Throwable $e) {
         error_log('Erro ao finalizar pedido: ' . $e->getMessage());
-        redirecionar('carrinho.php', 'NÃƒÂ£o foi possÃƒÂ­vel finalizar o pedido agora. Tente novamente.', 'erro');
+        redirecionar('carrinho.php', 'Não foi possível finalizar o pedido agora. Tente novamente.', 'erro');
     }
 
     $id_pedido = (int)$pedidoCriado['id_pedido'];
@@ -201,7 +201,7 @@ if (isset($_POST['finalizar_pedido'])) {
         exit;
     }
 
-    // E-mail de confirmaÃ§Ã£o
+     
     $stmt_cli = $conn->prepare("SELECT nome, email FROM usuarios WHERE id = ?");
     $stmt_cli->bind_param("i", $id_cliente);
     $stmt_cli->execute();
@@ -210,16 +210,16 @@ if (isset($_POST['finalizar_pedido'])) {
     if ($cli) {
         $itens_email = array_map(fn($i) => ['nome' => $i['nome'], 'preco' => $i['preco'], 'quantidade' => $i['quantidade']], $itens);
         $corpo = email_confirmacao_pedido($id_pedido, $cli['nome'], $itens_email, $total, $tipo_retirada);
-        enviar_email($cli['email'], "Pedido #$id_pedido confirmado â€“ FarmaVida", $corpo);
+        enviar_email($cli['email'], "Pedido #$id_pedido confirmado – FarmaVida", $corpo);
     }
 
     $msg_pedido = $tipo_retirada === 'delivery'
-        ? "Pedido #$id_pedido confirmado! Em breve seu delivery serÃ¡ enviado."
-        : "Pedido #$id_pedido confirmado! Retire no balcÃ£o quando estiver pronto.";
+        ? "Pedido #$id_pedido confirmado! Em breve seu delivery será enviado."
+        : "Pedido #$id_pedido confirmado! Retire no balcão quando estiver pronto.";
     redirecionar('painel_cliente.php', $msg_pedido);
 }
 
-// â”€â”€ LEITURA DOS ITENS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $stmt = $conn->prepare(
     "SELECT c.*, p.nome, p.descricao, p.preco, p.imagem, p.categoria
      FROM carrinho c
@@ -288,25 +288,19 @@ foreach ($itens as $item) {
         <?php if (empty($itens)): ?>
             <div class="card empty">
                 <i class="fas fa-shopping-bag"></i>
-                <h2>Sua sacola estÃ¡ vazia</h2>
-                <p>Adicione produtos da nossa farmÃ¡cia!</p>
+                <h2>Sua sacola está vazia</h2>
+                <p>Adicione produtos da nossa farmácia!</p>
                 <a href="index.php" class="btn btn-primary"><i class="fas fa-pills"></i> Ver Produtos</a>
             </div>
         <?php else: ?>
             <div class="cart-layout">
 
-                <!-- ITENS -->
+                
                 <div id="cart-items-container">
                     <?php foreach ($itens as $item): ?>
                         <div class="cart-item" id="item-<?= $item['id'] ?>" data-preco="<?= $item['preco'] ?>">
-                            <?php if ($item['imagem'] && file_exists($item['imagem'])): ?>
-                                <img src="<?= htmlspecialchars($item['imagem']) ?>"
-                                     alt="<?= htmlspecialchars($item['nome']) ?>">
-                            <?php else: ?>
-                                <div style="width:90px;height:90px;background:var(--bg);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;border:1px solid var(--light-gray);">
-                                    <i class="fas fa-pills" style="font-size:28px;color:var(--light-gray);"></i>
-                                </div>
-                            <?php endif; ?>
+                            <img src="<?= htmlspecialchars(url_imagem_produto($item['imagem'] ?? null, $item['nome'] ?? 'Produto', $item['categoria'] ?? 'Sem categoria')) ?>"
+                                 alt="<?= htmlspecialchars($item['nome']) ?>">
 
                             <div class="cart-item-info">
                                 <div class="cart-item-categoria"><i class="fas fa-tag"></i> <?= htmlspecialchars($item['categoria']) ?></div>
@@ -332,14 +326,14 @@ foreach ($itens as $item) {
                     </div>
                 </div>
 
-                <!-- CHECKOUT -->
+                
                 <div class="checkout-card">
                     <h3><i class="fas fa-receipt" style="color:var(--primary);"></i> Finalizar Compra</h3>
 
                     <form method="POST" id="checkout-form">
                         <?= campo_csrf() ?>
 
-                        <!-- TIPO DE ENTREGA -->
+                        
                         <div style="margin-bottom:20px;">
                             <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
                                 <i class="fas fa-truck-medical"></i> Como deseja receber?
@@ -351,7 +345,7 @@ foreach ($itens as $item) {
                                          style="padding:18px 12px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);transition:all .25s;cursor:pointer;">
                                         <i class="fas fa-store-alt" id="icon-balcao" style="font-size:28px;color:var(--primary);display:block;margin-bottom:8px;"></i>
                                         <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Buscar no Local</span>
-                                        <span style="font-size:11px;color:var(--success);display:block;margin-top:3px;font-weight:700;">âœ“ Sem taxa</span>
+                                        <span style="font-size:11px;color:var(--success);display:block;margin-top:3px;font-weight:700;">✓ Sem taxa</span>
                                     </div>
                                 </label>
                                 <label style="cursor:pointer;">
@@ -366,24 +360,24 @@ foreach ($itens as $item) {
                             </div>
                         </div>
 
-                        <!-- ENDEREÃ‡O ENTREGA -->
+                        
                         <div id="delivery-field" style="display:none;margin-bottom:18px;animation:fadeUp .3s ease;">
                             <div style="background:linear-gradient(135deg,#e6f0ff,#f0f7ff);border:1.5px solid #bfdbfe;border-radius:var(--radius-md);padding:16px;">
                                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                                     <i class="fas fa-map-marker-alt" style="color:var(--secondary);font-size:18px;"></i>
-                                    <span style="font-weight:700;color:var(--dark);font-size:14px;">EndereÃ§o de Entrega *</span>
+                                    <span style="font-weight:700;color:var(--dark);font-size:14px;">Endereço de Entrega *</span>
                                 </div>
                                 <input type="text" name="endereco_entrega" id="endereco_entrega"
-                                       placeholder="Rua, nÃºmero, bairro, cidade, CEP"
+                                       placeholder="Rua, número, bairro, cidade, CEP"
                                        style="background:white;border-color:#bfdbfe;">
                                 <p style="font-size:11px;color:var(--gray);margin-top:8px;display:flex;align-items:center;gap:5px;">
                                     <i class="fas fa-info-circle" style="color:var(--info);"></i>
-                                    Taxa de entrega: <strong><?= formatar_preco(TAXA_DELIVERY_VALOR) ?></strong> (jÃ¡ incluÃ­da no total)
+                                    Taxa de entrega: <strong><?= formatar_preco(TAXA_DELIVERY_VALOR) ?></strong> (já incluída no total)
                                 </p>
                             </div>
                         </div>
 
-                        <!-- FORMA DE PAGAMENTO -->
+                        
                         <div style="margin-bottom:20px;">
                             <label style="display:block;margin-bottom:12px;font-weight:700;color:var(--dark);font-size:14px;">
                                 <i class="fas fa-wallet"></i> Como deseja pagar?
@@ -395,7 +389,7 @@ foreach ($itens as $item) {
                                          style="padding:16px 10px;border:2px solid var(--primary);border-radius:var(--radius-md);text-align:center;background:rgba(0,135,90,.07);transition:all .25s;cursor:pointer;">
                                         <i class="fas fa-money-bill-wave" id="icon-presencial" style="font-size:26px;color:var(--primary);display:block;margin-bottom:7px;"></i>
                                         <span id="txt-presencial" style="font-weight:700;font-size:13px;color:var(--dark);display:block;">Na Retirada</span>
-                                        <span id="sub-presencial" style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Dinheiro ou cartÃ£o</span>
+                                        <span id="sub-presencial" style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Dinheiro ou cartão</span>
                                     </div>
                                 </label>
                                 <label style="cursor:pointer;">
@@ -404,7 +398,7 @@ foreach ($itens as $item) {
                                          style="padding:16px 10px;border:2px solid var(--light-gray);border-radius:var(--radius-md);text-align:center;transition:all .25s;cursor:pointer;">
                                         <i class="fas fa-mobile-screen-button" id="icon-app" style="font-size:26px;color:var(--gray-light);display:block;margin-bottom:7px;"></i>
                                         <span style="font-weight:700;font-size:13px;color:var(--dark);display:block;">No Aplicativo</span>
-                                        <span style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Pix, cartÃ£o online</span>
+                                        <span style="font-size:10px;color:var(--gray);display:block;margin-top:2px;">Pix, cartão online</span>
                                     </div>
                                 </label>
                             </div>
@@ -413,13 +407,13 @@ foreach ($itens as $item) {
                                     <i class="fas fa-qrcode" style="font-size:28px;color:#7c3aed;flex-shrink:0;"></i>
                                     <div>
                                         <strong style="color:#4c1d95;font-size:13px;display:block;">Pagamento pelo App</strong>
-                                        <span style="font-size:12px;color:#6d28d9;">ApÃ³s confirmar, vocÃª serÃ¡ redirecionado ao Mercado Pago.</span>
+                                        <span style="font-size:12px;color:#6d28d9;">Após confirmar, você será redirecionado ao Mercado Pago.</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- RESUMO DE VALORES -->
+                        
                         <div style="background:var(--bg);padding:16px;border-radius:var(--radius-md);margin-bottom:18px;">
                             <div class="checkout-line">
                                 <span>Subtotal (<span id="qtd-itens"><?= $total_itens ?></span> itens)</span>
@@ -434,7 +428,7 @@ foreach ($itens as $item) {
                             </div>
                             <div class="checkout-line" id="linha-frete-gratis">
                                 <span>Taxa de entrega</span>
-                                <span style="color:var(--success);font-weight:700;">GrÃ¡tis</span>
+                                <span style="color:var(--success);font-weight:700;">Grátis</span>
                             </div>
                             <div class="checkout-total">
                                 <span>Total</span>
@@ -443,8 +437,8 @@ foreach ($itens as $item) {
                         </div>
 
                         <div class="form-group">
-                            <label><i class="fas fa-comment-medical"></i> ObservaÃ§Ãµes (opcional)</label>
-                            <textarea name="observacoes" rows="2" placeholder="PrescriÃ§Ã£o, alergias, orientaÃ§Ãµes do mÃ©dico..."></textarea>
+                            <label><i class="fas fa-comment-medical"></i> Observações (opcional)</label>
+                            <textarea name="observacoes" rows="2" placeholder="Prescrição, alergias, orientações do médico..."></textarea>
                         </div>
 
                         <button type="submit" name="finalizar_pedido" class="btn btn-success btn-lg"
@@ -464,7 +458,7 @@ foreach ($itens as $item) {
     <script>
         const CSRF_TOKEN = <?= json_encode(gerar_token_csrf()) ?>;
 
-        // Taxa de delivery vinda do PHP â€” fonte Ãºnica de verdade
+        
         const TAXA_DELIVERY = <?= TAXA_DELIVERY_VALOR ?>;
 
         let itens = <?= json_encode(array_map(function($i){
@@ -505,7 +499,7 @@ foreach ($itens as $item) {
             gratis.style.display = isDeliveryAtivo ? 'none' : 'flex';
 
             document.getElementById('txt-presencial').textContent = isDeliveryAtivo ? 'Na Entrega'        : 'Na Retirada';
-            document.getElementById('sub-presencial').textContent = isDeliveryAtivo ? 'Pago ao entregador' : 'Dinheiro ou cartÃ£o';
+            document.getElementById('sub-presencial').textContent = isDeliveryAtivo ? 'Pago ao entregador' : 'Dinheiro ou cartão';
 
             atualizarTotalGeral();
             selecionarPagamento('presencial');

@@ -3,16 +3,16 @@ require_once FARMAVIDA_ROOT . '/app/core/bootstrap.php';
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/core/helpers.php';
 
-// SÃ³ o dono pode executar a limpeza
+ 
 verificar_login('dono');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['executar'])) {
     http_response_code(405);
-    die("MÃ©todo nÃ£o permitido.");
+    die("Método não permitido.");
 }
 verificar_csrf();
 
-// Contar pedidos a remover
+ 
 $resultado = $conn->query(
     "SELECT COUNT(*) as total FROM pedidos WHERE status IN ('entregue', 'cancelado')"
 );
@@ -22,20 +22,20 @@ if ($total_remover === 0) {
     redirecionar('painel_dono.php', 'Nenhum pedido finalizado para remover.');
 }
 
-// Buscar IDs (vindos do banco, sem input do usuÃ¡rio â€” seguro)
+ 
 $ids_remover = [];
 $res_ids = $conn->query(
     "SELECT id FROM pedidos WHERE status IN ('entregue', 'cancelado')"
 );
 while ($row = $res_ids->fetch_assoc()) {
-    $ids_remover[] = (int)$row['id'];   // cast para garantir que sÃ£o inteiros
+    $ids_remover[] = (int)$row['id'];    
 }
 
 if (empty($ids_remover)) {
     redirecionar('painel_dono.php', 'Nenhum pedido encontrado.');
 }
 
-$ids_string = implode(',', $ids_remover); // seguro: apenas inteiros
+$ids_string = implode(',', $ids_remover);  
 
 $conn->begin_transaction();
 try {
@@ -47,13 +47,13 @@ try {
 
     $conn->commit();
 
-    // Log da operaÃ§Ã£o
+     
     @mkdir('logs', 0755, true);
     $log = date('Y-m-d H:i:s') . " | Admin: {$_SESSION['usuario']} | "
          . "Limpeza: $pedidos_removidos pedidos, $itens_removidos itens\n";
     file_put_contents('logs/limpeza.log', $log, FILE_APPEND);
 
-    redirecionar('painel_dono.php', "Limpeza concluÃ­da: $pedidos_removidos pedido(s) e $itens_removidos item(ns) removidos.");
+    redirecionar('painel_dono.php', "Limpeza concluída: $pedidos_removidos pedido(s) e $itens_removidos item(ns) removidos.");
 } catch (Exception $e) {
     $conn->rollback();
     error_log('Erro na limpeza de pedidos: ' . $e->getMessage());

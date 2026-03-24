@@ -104,7 +104,7 @@ function pedido_atualizar_status(mysqli $conn, int $idPedido, string $status, ?i
         $stmt->close();
 
         if (!$pedidoAtual) {
-            throw new RuntimeException('Pedido nÃ£o encontrado.');
+            throw new RuntimeException('Pedido não encontrado.');
         }
 
         $stmt = $conn->prepare("UPDATE pedidos SET status = ? WHERE id = ?");

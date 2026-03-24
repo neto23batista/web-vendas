@@ -15,7 +15,7 @@ $token = trim($_GET['token'] ?? $_POST['token'] ?? '');
 $erro  = '';
 $reset = null;
 
-// Valida token
+ 
 if ($token !== '') {
     $stmt = $conn->prepare(
         "SELECT pr.*, u.nome, u.email
@@ -32,12 +32,12 @@ if ($token !== '') {
 }
 
 if (!$reset && $token !== '') {
-    $erro = 'Link invÃ¡lido ou expirado. Solicite um novo link.';
+    $erro = 'Link inválido ou expirado. Solicite um novo link.';
 } elseif ($token === '') {
     $erro = 'Token ausente. Solicite um novo link.';
 }
 
-// Processa nova senha
+ 
 $sucesso = false;
 if (!$erro && $_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
@@ -46,9 +46,9 @@ if (!$erro && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirmar  = $_POST['confirmar_senha'] ?? '';
 
     if (strlen($nova_senha) < 6) {
-        $erro = 'A senha deve ter no mÃ­nimo 6 caracteres.';
+        $erro = 'A senha deve ter no mínimo 6 caracteres.';
     } elseif ($nova_senha !== $confirmar) {
-        $erro = 'As senhas nÃ£o coincidem.';
+        $erro = 'As senhas não coincidem.';
     } else {
         $hash = password_hash($nova_senha, PASSWORD_DEFAULT);
 
@@ -104,7 +104,7 @@ if (!$erro && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <?php else: ?>
             <p class="auth-subtitle">
-                OlÃ¡, <strong><?= htmlspecialchars($reset['nome']) ?></strong>. Defina sua nova senha abaixo.
+                Olá, <strong><?= htmlspecialchars($reset['nome']) ?></strong>. Defina sua nova senha abaixo.
             </p>
 
             <?php if ($erro): ?>
@@ -118,7 +118,7 @@ if (!$erro && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
 
                 <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Nova senha <small style="font-weight:400;color:var(--gray);">(mÃ­n. 6 chars)</small></label>
+                    <label><i class="fas fa-lock"></i> Nova senha <small style="font-weight:400;color:var(--gray);">(mín. 6 chars)</small></label>
                     <input type="password" name="nova_senha" required minlength="6"
                            placeholder="Crie uma senha forte" autocomplete="new-password">
                 </div>

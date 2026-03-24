@@ -5,7 +5,7 @@ require_once FARMAVIDA_ROOT . '/app/core/helpers.php';
 
 verificar_login('dono');
 
-// â”€â”€ ADICIONAR PRODUTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['adicionar_produto'])) {
     verificar_csrf();
 
@@ -33,7 +33,7 @@ if (isset($_POST['adicionar_produto'])) {
     redirecionar('gerenciar_produtos.php', 'Produto adicionado com sucesso!');
 }
 
-// â”€â”€ EDITAR PRODUTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['editar_produto'])) {
     verificar_csrf();
 
@@ -69,9 +69,9 @@ if (isset($_POST['editar_produto'])) {
     redirecionar('gerenciar_produtos.php', 'Produto atualizado!');
 }
 
-// â”€â”€ DELETAR PRODUTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 if (isset($_POST['deletar_produto'])) {
-    verificar_csrf(); // token via GET para confirmaÃ§Ã£o
+    verificar_csrf();  
     $id = (int)($_POST['id'] ?? 0);
 
     $stmt = $conn->prepare("SELECT imagem FROM produtos WHERE id = ?");
@@ -92,7 +92,7 @@ if (isset($_POST['deletar_produto'])) {
     redirecionar('gerenciar_produtos.php', 'Produto removido!');
 }
 
-// â”€â”€ LISTAGEM COM BUSCA E PAGINAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $busca    = $_GET['busca'] ?? '';
 $pagina   = max(1, (int)($_GET['pagina'] ?? 1));
 $por_pag  = 20;
@@ -178,7 +178,7 @@ if (isset($_GET['editar'])) {
             <?php unset($_SESSION['erro']); ?>
         <?php endif; ?>
 
-        <!-- FORMULÃRIO -->
+        
         <div class="card">
             <h2><i class="fas fa-<?= $produto_editar ? 'edit' : 'plus' ?>"></i> <?= $produto_editar ? 'Editar' : 'Adicionar' ?> Produto</h2>
 
@@ -194,7 +194,7 @@ if (isset($_GET['editar'])) {
                         <input type="text" name="nome" value="<?= htmlspecialchars($produto_editar['nome'] ?? '') ?>" required placeholder="Ex: Dipirona 500mg">
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-dollar-sign"></i> PreÃ§o (R$) *</label>
+                        <label><i class="fas fa-dollar-sign"></i> Preço (R$) *</label>
                         <input type="number" name="preco" step="0.01" min="0.01"
                                value="<?= htmlspecialchars($produto_editar['preco'] ?? '') ?>" required placeholder="0.00">
                     </div>
@@ -203,7 +203,7 @@ if (isset($_GET['editar'])) {
                         <select name="categoria" required>
                             <option value="">Selecione uma categoria</option>
                             <?php
-                            $cats = ['Medicamentos','GenÃ©ricos','Vitaminas','Higiene Pessoal','DermocosmÃ©ticos','Infantil','Bem-Estar','Primeiros Socorros','Ortopedia'];
+                            $cats = ['Medicamentos','Genéricos','Vitaminas','Higiene Pessoal','Dermocosméticos','Infantil','Bem-Estar','Primeiros Socorros','Ortopedia'];
                             foreach ($cats as $c): ?>
                                 <option value="<?= htmlspecialchars($c) ?>"
                                     <?= (isset($produto_editar) && $produto_editar['categoria'] == $c) ? 'selected' : '' ?>>
@@ -216,23 +216,23 @@ if (isset($_GET['editar'])) {
                         <label><i class="fas fa-image"></i> Imagem <?= $produto_editar ? '(opcional)' : '*' ?></label>
                         <input type="file" name="imagem" accept="image/jpeg,image/png,image/gif,image/webp"
                                <?= $produto_editar ? '' : 'required' ?>>
-                        <?php if ($produto_editar && $produto_editar['imagem']): ?>
-                            <img src="<?= htmlspecialchars($produto_editar['imagem']) ?>"
+                        <?php if ($produto_editar): ?>
+                            <img src="<?= htmlspecialchars(url_imagem_produto($produto_editar['imagem'] ?? null, $produto_editar['nome'] ?? 'Produto', $produto_editar['categoria'] ?? 'Sem categoria')) ?>"
                                  alt="Preview" style="max-width:160px;border-radius:10px;margin-top:10px;">
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label><i class="fas fa-align-left"></i> DescriÃ§Ã£o *</label>
-                    <textarea name="descricao" required placeholder="IndicaÃ§Ãµes, composiÃ§Ã£o, posologia..."><?= htmlspecialchars($produto_editar['descricao'] ?? '') ?></textarea>
+                    <label><i class="fas fa-align-left"></i> Descrição *</label>
+                    <textarea name="descricao" required placeholder="Indicações, composição, posologia..."><?= htmlspecialchars($produto_editar['descricao'] ?? '') ?></textarea>
                 </div>
 
                 <?php if ($produto_editar): ?>
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" name="disponivel" <?= $produto_editar['disponivel'] ? 'checked' : '' ?>>
-                            Produto disponÃ­vel para venda
+                            Produto disponível para venda
                         </label>
                     </div>
                 <?php endif; ?>
@@ -248,7 +248,7 @@ if (isset($_GET['editar'])) {
             </form>
         </div>
 
-        <!-- LISTA -->
+        
         <div class="card">
             <h2><i class="fas fa-list"></i> Produtos Cadastrados (<?= $total_registros ?>)</h2>
 
@@ -270,26 +270,20 @@ if (isset($_GET['editar'])) {
                 <table class="produtos-table">
                     <thead>
                         <tr>
-                            <th>Imagem</th><th>Nome</th><th>Categoria</th><th>PreÃ§o</th><th>Status</th><th>AÃ§Ãµes</th>
+                            <th>Imagem</th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Status</th><th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($produtos as $p): ?>
                             <tr>
                                 <td>
-                                    <?php if ($p['imagem'] && file_exists($p['imagem'])): ?>
-                                        <img src="<?= htmlspecialchars($p['imagem']) ?>"
-                                             alt="<?= htmlspecialchars($p['nome']) ?>">
-                                    <?php else: ?>
-                                        <div style="width:56px;height:56px;background:var(--bg);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;border:1px solid var(--light-gray);">
-                                            <i class="fas fa-pills" style="color:var(--light-gray);"></i>
-                                        </div>
-                                    <?php endif; ?>
+                                    <img src="<?= htmlspecialchars(url_imagem_produto($p['imagem'] ?? null, $p['nome'] ?? 'Produto', $p['categoria'] ?? 'Sem categoria')) ?>"
+                                         alt="<?= htmlspecialchars($p['nome']) ?>">
                                 </td>
                                 <td><strong><?= htmlspecialchars($p['nome']) ?></strong></td>
                                 <td><?= htmlspecialchars($p['categoria']) ?></td>
                                 <td><strong style="color:var(--primary);"><?= formatar_preco($p['preco']) ?></strong></td>
-                                <td><span class="badge badge-<?= $p['disponivel'] ? 'success' : 'danger' ?>"><?= $p['disponivel'] ? 'DisponÃ­vel' : 'IndisponÃ­vel' ?></span></td>
+                                <td><span class="badge badge-<?= $p['disponivel'] ? 'success' : 'danger' ?>"><?= $p['disponivel'] ? 'Disponível' : 'Indisponível' ?></span></td>
                                 <td>
                                     <a href="?editar=<?= $p['id'] ?>" class="btn btn-warning" style="padding:8px 14px;font-size:13px;">
                                         <i class="fas fa-edit"></i>
@@ -311,7 +305,7 @@ if (isset($_GET['editar'])) {
                     </tbody>
                 </table>
 
-                <!-- PAGINAÃ‡ÃƒO -->
+                
                 <?php if ($total_paginas > 1): ?>
                 <div class="paginacao">
                     <?php if ($pagina > 1): ?>
@@ -327,11 +321,11 @@ if (isset($_GET['editar'])) {
                     <?php endfor; ?>
 
                     <?php if ($pagina < $total_paginas): ?>
-                        <a href="?pagina=<?= $pagina + 1 ?>&busca=<?= urlencode($busca) ?>">PrÃ³xima &#8594;</a>
+                        <a href="?pagina=<?= $pagina + 1 ?>&busca=<?= urlencode($busca) ?>">Próxima &#8594;</a>
                     <?php endif; ?>
 
                     <span style="color:var(--gray);padding:7px 0;">
-                        PÃ¡gina <?= $pagina ?> de <?= $total_paginas ?>
+                        Página <?= $pagina ?> de <?= $total_paginas ?>
                         (<?= $total_registros ?> produto<?= $total_registros != 1 ? 's' : '' ?>)
                     </span>
                 </div>

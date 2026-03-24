@@ -1,37 +1,37 @@
 <?php
-// ============================================================
-// SETUP FIX â€“ CorreÃ§Ãµes mobile especÃ­ficas
-// http://localhost/web-vendas/setup_fix.php
-// Corrige: header overflow, alert banner, stats 5th card
-// ============================================================
+ 
+ 
+ 
+ 
+ 
 
-// â”€â”€ 1. PATCH CSS â€” adiciona regras mobile no style.css â”€â”€
+ 
 $css_patch = <<<'MOBILECSS'
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   MOBILE FIX PATCH
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+ 
 
-/* â”€â”€ NAV: esconde textos, mantÃ©m Ã­cones â”€â”€ */
+
+
+ 
 @media(max-width:700px){
-  /* Header logo: esconde textos extras, mantÃ©m logo+Ã­cone */
+   
   .header .logo > span:not(:first-child){ display:none; }
   .header .logo > button,
   .header .logo > .auto-update-badge { display:none !important; }
 
-  /* Nav buttons: todos viram Ã­cone only */
+   
   .nav-buttons .btn > i ~ * { display:none; }
 
-  /* Stats: 5 cards â†’ linha de 2 + linha de 3 */
+   
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
-  /* O quinto filho preenche linha sozinho */
+   
   .stats-grid > .stat-card:last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
 
-  /* Alert banner: empilha verticalmente */
+   
   .alert-estoque-inner {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -43,13 +43,13 @@ $css_patch = <<<'MOBILECSS'
     width: 100%;
   }
 
-  /* Pedido header: empilha */
+   
   .pedido-header {
     flex-direction: column;
     gap: 10px;
   }
 
-  /* Status form: botÃµes ocupam 100% */
+   
   .status-form {
     flex-direction: column;
   }
@@ -62,7 +62,7 @@ $css_patch = <<<'MOBILECSS'
 }
 
 @media(max-width:400px){
-  /* Extra pequeno: stats 1 coluna */
+   
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -74,23 +74,23 @@ MOBILECSS;
 $css_file = FARMAVIDA_ROOT . '/style.css';
 $atual = file_get_contents($css_file);
 
-// Remove patch anterior se jÃ¡ existir
-$atual = preg_replace('/\/\* â•+\s*MOBILE FIX PATCH.*$/s', '', $atual);
+ 
+$atual = preg_replace('/\/\* ═+\s*MOBILE FIX PATCH.*$/s', '', $atual);
 $atual = rtrim($atual) . "
 " . $css_patch;
 file_put_contents($css_file, $atual);
 
-// â”€â”€ 2. PATCH painel_dono.php â€” banner com classe â”€â”€
+ 
 $painel = FARMAVIDA_ROOT . '/app/pages/admin/painel_dono.php';
 $html   = file_get_contents($painel);
 
-// Substituir o innerHTML do banner para usar classe CSS
+ 
 $old = <<<'OLDJS'
                     banner.innerHTML = `
                         <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:var(--radius-md);padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px;">
                             <i class="fas fa-triangle-exclamation" style="font-size:22px;color:#d97706;flex-shrink:0;margin-top:2px;"></i>
                             <div style="flex:1;">
-                                <strong style="color:#92400e;display:block;margin-bottom:8px;">âš ï¸ Estoque crÃ­tico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mÃ­nimo</strong>
+                                <strong style="color:#92400e;display:block;margin-bottom:8px;">⚠️ Estoque crítico: ${data.zerados} produto(s) zerado(s), ${data.baixos} abaixo do mínimo</strong>
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;">${itensHtml}</div>
                             </div>
                             <a href="estoque.php" class="btn btn-warning" style="padding:8px 16px;font-size:13px;flex-shrink:0;">
@@ -105,7 +105,7 @@ $new = <<<'NEWJS'
                             <div class="alert-estoque-inner" style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
                                 <i class="fas fa-triangle-exclamation" style="font-size:18px;color:var(--warning);flex-shrink:0;margin-top:2px;"></i>
                                 <div style="flex:1;min-width:180px;">
-                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crÃ­tico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mÃ­nimo</strong>
+                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crítico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mínimo</strong>
                                     <div style="display:flex;gap:6px;flex-wrap:wrap;">${itensHtml}</div>
                                 </div>
                                 <a href="estoque.php" class="btn btn-warning" style="font-size:12px;padding:0 14px;min-height:38px;flex-shrink:0;">
@@ -124,7 +124,7 @@ if (str_contains($html, trim(explode("
     $painel_ok = false;
 }
 
-// â”€â”€ 3. RESULTADO â”€â”€
+ 
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -147,29 +147,29 @@ li:last-child{border-bottom:none;}
 </style>
 </head>
 <body>
-<h1>ðŸ”§ Mobile Fix</h1>
+<h1>🔧 Mobile Fix</h1>
 
 <div class="box">
-  <p class="ok">âœ… style.css â€” regras mobile adicionadas</p>
+  <p class="ok">✅ style.css — regras mobile adicionadas</p>
   <ul>
-    <li>âœ“ Nav: botÃµes mostram sÃ³ Ã­cone no mobile</li>
-    <li>âœ“ Stats: 5Âº card ocupa linha inteira</li>
-    <li>âœ“ Alert banner: empilha verticalmente</li>
-    <li>âœ“ pedido-header: coluna no mobile</li>
-    <li>âœ“ status-form: botÃµes 100% de largura</li>
+    <li>✓ Nav: botões mostram só ícone no mobile</li>
+    <li>✓ Stats: 5º card ocupa linha inteira</li>
+    <li>✓ Alert banner: empilha verticalmente</li>
+    <li>✓ pedido-header: coluna no mobile</li>
+    <li>✓ status-form: botões 100% de largura</li>
   </ul>
 </div>
 
 <div class="box">
   <?php if ($painel_ok): ?>
-    <p class="ok">âœ… painel_dono.php â€” banner de estoque corrigido</p>
+    <p class="ok">✅ painel_dono.php — banner de estoque corrigido</p>
   <?php else: ?>
-    <p class="warn">âš ï¸ painel_dono.php â€” jÃ¡ estava corrigido ou padrÃ£o diferente</p>
+    <p class="warn">⚠️ painel_dono.php — já estava corrigido ou padrão diferente</p>
   <?php endif; ?>
 </div>
 
-<a href="painel_dono.php" class="btn">Ver Painel Admin â†’</a>
-<a href="index.php" class="btn btn2">Ver Loja â†’</a>
-<p style="text-align:center;margin-top:14px;font-size:11px;color:#4d6b8a;">Apague este arquivo apÃ³s usar.</p>
+<a href="painel_dono.php" class="btn">Ver Painel Admin →</a>
+<a href="index.php" class="btn btn2">Ver Loja →</a>
+<p style="text-align:center;margin-top:14px;font-size:11px;color:#4d6b8a;">Apague este arquivo após usar.</p>
 </body>
 </html>

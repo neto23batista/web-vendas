@@ -75,7 +75,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
 
     <div class="container">
         <div class="card" style="background:var(--gradient-main);color:white;">
-            <h1 style="color:white;margin-bottom:6px;"><i class="fas fa-user-circle"></i> OlÃ¡, <?= htmlspecialchars($_SESSION['usuario']) ?>!</h1>
+            <h1 style="color:white;margin-bottom:6px;"><i class="fas fa-user-circle"></i> Olá, <?= htmlspecialchars($_SESSION['usuario']) ?>!</h1>
             <p style="opacity:.9;">Gerencie seus pedidos e dados pessoais</p>
         </div>
 
@@ -95,18 +95,18 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 </button>
             </div>
 
-            <!-- ABA PEDIDOS -->
+            
             <div id="pedidos" class="tab-content active">
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle"></i>
-                    Pedidos entregues e cancelados sÃ£o ocultados automaticamente para manter seu painel organizado.
+                    Pedidos entregues e cancelados são ocultados automaticamente para manter seu painel organizado.
                 </div>
                 <div id="pedidos-container">
                     <?php if (empty($pedidos)): ?>
                         <div class="empty">
                             <i class="fas fa-clipboard"></i>
                             <h2>Nenhum pedido ativo</h2>
-                            <p>Navegue pela nossa farmÃ¡cia e faÃ§a seu pedido!</p>
+                            <p>Navegue pela nossa farmácia e faça seu pedido!</p>
                             <a href="index.php" class="btn btn-primary"><i class="fas fa-pills"></i> Ver Produtos</a>
                         </div>
                     <?php else: ?>
@@ -135,7 +135,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                                 </div>
                                 <?php if ($pedido['observacoes']): ?>
                                     <div class="pedido-info" style="margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;">
-                                        <i class="fas fa-comment-medical"></i> <strong>ObservaÃ§Ãµes:</strong> <?= htmlspecialchars($pedido['observacoes']) ?>
+                                        <i class="fas fa-comment-medical"></i> <strong>Observações:</strong> <?= htmlspecialchars($pedido['observacoes']) ?>
                                     </div>
                                 <?php endif; ?>
                                 <div class="pedido-total"><?= formatar_preco($pedido['total']) ?></div>
@@ -145,7 +145,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 </div>
             </div>
 
-            <!-- ABA DADOS -->
+            
             <div id="dados" class="tab-content">
                 <form method="POST">
                     <?= campo_csrf() ?>
@@ -156,18 +156,18 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                     <div class="form-group">
                         <label><i class="fas fa-envelope"></i> E-mail</label>
                         <input type="email" value="<?= htmlspecialchars($cliente['email']) ?>" disabled style="background:var(--bg);color:var(--gray);">
-                        <small style="color:var(--gray);font-size:12px;">O e-mail nÃ£o pode ser alterado</small>
+                        <small style="color:var(--gray);font-size:12px;">O e-mail não pode ser alterado</small>
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-phone"></i> Telefone / WhatsApp</label>
                         <input type="tel" name="telefone" value="<?= htmlspecialchars($cliente['telefone'] ?? '') ?>" placeholder="(00) 00000-0000">
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-map-marker-alt"></i> EndereÃ§o de Entrega</label>
-                        <textarea name="endereco" rows="3" placeholder="Rua, nÃºmero, bairro, cidade"><?= htmlspecialchars($cliente['endereco'] ?? '') ?></textarea>
+                        <label><i class="fas fa-map-marker-alt"></i> Endereço de Entrega</label>
+                        <textarea name="endereco" rows="3" placeholder="Rua, número, bairro, cidade"><?= htmlspecialchars($cliente['endereco'] ?? '') ?></textarea>
                     </div>
                     <button type="submit" name="atualizar_dados" class="btn btn-success">
-                        <i class="fas fa-save"></i> Salvar AlteraÃ§Ãµes
+                        <i class="fas fa-save"></i> Salvar Alterações
                     </button>
                 </form>
             </div>
@@ -208,7 +208,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 const container = document.getElementById('pedidos-container');
                 const ativos = data.pedidos.filter(p => p.status !== 'entregue' && p.status !== 'cancelado');
                 if (ativos.length === 0) {
-                    container.innerHTML = `<div class="empty"><i class="fas fa-clipboard"></i><h2>Nenhum pedido ativo</h2><p>Navegue pela farmÃ¡cia!</p><a href="index.php" class="btn btn-primary"><i class="fas fa-pills"></i> Ver Produtos</a></div>`;
+                    container.innerHTML = `<div class="empty"><i class="fas fa-clipboard"></i><h2>Nenhum pedido ativo</h2><p>Navegue pela farmácia!</p><a href="index.php" class="btn btn-primary"><i class="fas fa-pills"></i> Ver Produtos</a></div>`;
                     return;
                 }
                 let html = '';
@@ -252,7 +252,7 @@ $status_labels = ['pendente'=>'AGUARDANDO','preparando'=>'SEPARANDO','pronto'=>'
                 fd.append('id_pedido',idPedido);
                 fd.append('csrf_token', CSRF_TOKEN);
                 const data = await (await fetch('ajax_handler.php', {method:'POST',body:fd})).json();
-                if (data.sucesso) { mostrarToast('âœ… Pagamento solicitado! O farmacÃªutico vai te atender.'); atualizarPedidos(); }
+                if (data.sucesso) { mostrarToast('✅ Pagamento solicitado! O farmacêutico vai te atender.'); atualizarPedidos(); }
             } catch(e) {}
         }
 

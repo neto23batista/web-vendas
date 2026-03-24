@@ -7,7 +7,7 @@ require_once FARMAVIDA_ROOT . '/services/pedido_service.php';
 
 verificar_login('dono');
 
-// Fallback PHP para atualizaÃ§Ã£o de status (o caminho principal Ã© via AJAX)
+ 
 if (isset($_POST['atualizar_status'])) {
     verificar_csrf();
     $id_pedido = (int)$_POST['id_pedido'];
@@ -23,7 +23,7 @@ if (isset($_POST['atualizar_status'])) {
     redirecionar('painel_dono.php', 'Status atualizado!');
 }
 
-// â”€â”€ STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $migracoes_pendentes = schema_listar_migracoes_pendentes($conn);
 $tem_migracoes_pendentes = !empty($migracoes_pendentes);
 
@@ -42,7 +42,7 @@ $total_clientes = $conn->query(
     "SELECT COUNT(*) as t FROM usuarios WHERE tipo='cliente'"
 )->fetch_assoc()['t'];
 
-// â”€â”€ PEDIDOS (pÃ¡gina inicial â€” o AJAX atualiza depois) â”€â”€â”€â”€â”€â”€â”€â”€
+ 
 $pagina  = max(1, (int)($_GET['pagina'] ?? 1));
 $por_pag = 20;
 $offset  = ($pagina - 1) * $por_pag;
@@ -113,7 +113,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             </div>
             <div class="nav-buttons">
                 <a href="migracoes.php"           class="btn btn-secondary"><i class="fas fa-database"></i> Migracoes<?= $tem_migracoes_pendentes ? ' (' . count($migracoes_pendentes) . ')' : '' ?></a>
-                <a href="relatorios.php"          class="btn btn-info"     ><i class="fas fa-chart-line"></i> RelatÃ³rios</a>
+                <a href="relatorios.php"          class="btn btn-info"     ><i class="fas fa-chart-line"></i> Relatórios</a>
                 <a href="nfe.php"                 class="btn btn-secondary"><i class="fas fa-file-invoice"></i> NF-e</a>
                 <a href="erp.php"                 class="btn btn-secondary"><i class="fas fa-plug"></i> ERP</a>
                 <a href="gerenciar_produtos.php"  class="btn btn-success"  ><i class="fas fa-boxes"></i> Produtos</a>
@@ -159,7 +159,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             </div>
         <?php endif; ?>
 
-        <!-- STATS -->
+        
         <div class="stats-grid">
             <div class="stat-card">
                 <i class="fas fa-receipt"></i>
@@ -184,11 +184,11 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             <div class="stat-card">
                 <i class="fas fa-pills"></i>
                 <div class="stat-numero" id="stat-produtos"><?= $total_produtos ?></div>
-                <div class="stat-label">Produtos DisponÃ­veis</div>
+                <div class="stat-label">Produtos Disponíveis</div>
             </div>
         </div>
 
-        <!-- PEDIDOS -->
+        
         <div class="card">
             <h2><i class="fas fa-clipboard-list"></i> Pedidos</h2>
 
@@ -215,11 +215,11 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                         </span>
                                         <?php if (($pedido['forma_pagamento'] ?? '') === 'app'): ?>
                                             <?php
-                                            $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em anÃ¡lise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
+                                            $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em análise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
                                             $pg = $pg_cores[$pedido['pagamento_status'] ?? 'pendente'] ?? $pg_cores['pendente'];
                                             ?>
                                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:<?= $pg[0] ?>1a;color:<?= $pg[0] ?>;">
-                                                <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> Â· MP
+                                                <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> · MP
                                             </span>
                                         <?php endif; ?>
                                     </div>
@@ -265,7 +265,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                         </div>
                     <?php endforeach; ?>
 
-                    <!-- PAGINAÃ‡ÃƒO -->
+                    
                     <?php if ($total_paginas > 1): ?>
                     <div class="paginacao">
                         <?php if ($pagina > 1): ?>
@@ -279,10 +279,10 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                             <?php endif; ?>
                         <?php endfor; ?>
                         <?php if ($pagina < $total_paginas): ?>
-                            <a href="?pagina=<?= $pagina + 1 ?>">PrÃ³xima &#8594;</a>
+                            <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
                         <?php endif; ?>
                         <span style="color:var(--text2);padding:7px 0;">
-                            PÃ¡gina <?= $pagina ?> de <?= $total_paginas ?>
+                            Página <?= $pagina ?> de <?= $total_paginas ?>
                         </span>
                     </div>
                     <?php endif; ?>
@@ -312,7 +312,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 const data = await (await fetch('ajax_handler.php', {method:'POST', body:fd})).json();
                 if (data.sucesso) { mostrarToast('Status atualizado!'); atualizarStats(); }
                 else mostrarToast(data.erro || 'Erro', 'error');
-            } catch(e) { mostrarToast('Erro de conexÃ£o','error'); }
+            } catch(e) { mostrarToast('Erro de conexão','error'); }
         }
 
         function formatarPreco(v) { return 'R$ '+parseFloat(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
@@ -412,7 +412,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                             <div class="alert-estoque-inner" style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
                                 <i class="fas fa-triangle-exclamation" style="font-size:18px;color:var(--warning);flex-shrink:0;margin-top:2px;"></i>
                                 <div style="flex:1;min-width:160px;">
-                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crÃ­tico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mÃ­nimo</strong>
+                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crítico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mínimo</strong>
                                     <div style="display:flex;gap:6px;flex-wrap:wrap;">${itensHtml}</div>
                                 </div>
                                 <a href="estoque.php" class="btn btn-warning" style="font-size:12px;padding:0 14px;min-height:38px;flex-shrink:0;">

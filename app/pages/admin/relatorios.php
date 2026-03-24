@@ -33,7 +33,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>RelatÃ³rios â€“ FarmaVida</title>
+    <title>Relatórios – FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=1774207549">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -72,7 +72,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
 <body>
 <div class="header">
     <div class="header-container">
-        <div class="logo" style="cursor:default;"><div class="logo-icon"><i class="fas fa-chart-line"></i></div>RelatÃ³rios</div>
+        <div class="logo" style="cursor:default;"><div class="logo-icon"><i class="fas fa-chart-line"></i></div>Relatórios</div>
         <div class="nav-buttons">
             <button onclick="window.print()" class="btn btn-secondary"><i class="fas fa-print"></i></button>
             <a href="painel_dono.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Painel</a>
@@ -82,23 +82,23 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
 
 <div class="container">
 
-<!-- PERÃODO -->
+
 <div class="periodo-bar">
-    <span style="font-size:12px;font-weight:700;color:var(--text2);margin-right:4px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> PerÃ­odo:</span>
+    <span style="font-size:12px;font-weight:700;color:var(--text2);margin-right:4px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Período:</span>
     <a href="?periodo=7"  class="periodo-btn <?= $periodo=='7' &&empty($_GET['data_ini'])?'active':'' ?>">7 dias</a>
     <a href="?periodo=15" class="periodo-btn <?= $periodo=='15'&&empty($_GET['data_ini'])?'active':'' ?>">15 dias</a>
     <a href="?periodo=30" class="periodo-btn <?= ($periodo=='30'||empty($_GET['periodo']))&&empty($_GET['data_ini'])?'active':'' ?>">30 dias</a>
     <a href="?periodo=90" class="periodo-btn <?= $periodo=='90'&&empty($_GET['data_ini'])?'active':'' ?>">90 dias</a>
     <form method="GET" style="display:flex;gap:8px;align-items:center;margin-left:8px;">
         <input type="date" name="data_ini" value="<?= htmlspecialchars($data_ini) ?>" style="padding:6px 10px;font-size:12px;">
-        <span style="color:var(--text3);font-size:12px;">atÃ©</span>
+        <span style="color:var(--text3);font-size:12px;">até</span>
         <input type="date" name="data_fim" value="<?= htmlspecialchars($data_fim) ?>" style="padding:6px 10px;font-size:12px;">
         <button type="submit" class="btn btn-primary" style="padding:7px 14px;font-size:12px;"><i class="fas fa-search"></i></button>
     </form>
-    <span style="margin-left:auto;font-size:11px;color:var(--text3);"><?= date('d/m/Y',strtotime($data_ini)) ?> â€“ <?= date('d/m/Y',strtotime($data_fim)) ?></span>
+    <span style="margin-left:auto;font-size:11px;color:var(--text3);"><?= date('d/m/Y',strtotime($data_ini)) ?> – <?= date('d/m/Y',strtotime($data_fim)) ?></span>
 </div>
 
-<!-- KPIs -->
+
 <div class="kpi-grid">
     <div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(0,229,160,.1);"><i class="fas fa-sack-dollar" style="color:var(--primary);"></i></div>
@@ -110,11 +110,11 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
     </div>
     <div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(168,85,247,.1);"><i class="fas fa-ticket" style="color:#a855f7;"></i></div>
-        <div><div class="kpi-val"><?= formatar_preco($kpis['ticket_medio']) ?></div><div class="kpi-label">Ticket MÃ©dio</div></div>
+        <div><div class="kpi-val"><?= formatar_preco($kpis['ticket_medio']) ?></div><div class="kpi-label">Ticket Médio</div></div>
     </div>
     <div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(0,229,160,.1);"><i class="fas fa-users" style="color:var(--primary);"></i></div>
-        <div><div class="kpi-val"><?= $kpis['clientes_unicos'] ?></div><div class="kpi-label">Clientes Ãšnicos</div></div>
+        <div><div class="kpi-val"><?= $kpis['clientes_unicos'] ?></div><div class="kpi-label">Clientes Únicos</div></div>
     </div>
     <div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(77,156,255,.1);"><i class="fas fa-motorcycle" style="color:var(--secondary);"></i></div>
@@ -126,7 +126,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
     </div>
 </div>
 
-<!-- GRÃFICOS -->
+
 <div class="charts-grid">
     <div class="chart-card">
         <h3><i class="fas fa-chart-line"></i> Faturamento por Dia</h3>
@@ -143,7 +143,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
         <canvas id="chartCat" height="220"></canvas>
     </div>
     <div class="chart-card">
-        <h3><i class="fas fa-clock"></i> HorÃ¡rio de Pico</h3>
+        <h3><i class="fas fa-clock"></i> Horário de Pico</h3>
         <canvas id="chartHora" height="220"></canvas>
     </div>
     <div class="chart-card">
@@ -152,11 +152,11 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
     </div>
 </div>
 
-<!-- TOP PRODUTOS + TOP CLIENTES -->
+
 <div class="charts-grid">
     <div class="chart-card">
         <h3><i class="fas fa-trophy"></i> Top 10 Produtos</h3>
-        <?php if(empty($top_produtos)): ?><p style="color:var(--text3);font-size:13px;text-align:center;padding:32px;">Sem dados no perÃ­odo</p>
+        <?php if(empty($top_produtos)): ?><p style="color:var(--text3);font-size:13px;text-align:center;padding:32px;">Sem dados no período</p>
         <?php else: ?>
         <table class="top-table">
             <thead><tr><th>#</th><th>Produto</th><th>Categoria</th><th>Qtd</th><th>Receita</th></tr></thead>
@@ -176,7 +176,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
     </div>
     <div class="chart-card">
         <h3><i class="fas fa-star"></i> Melhores Clientes</h3>
-        <?php if(empty($top_clientes)): ?><p style="color:var(--text3);font-size:13px;text-align:center;padding:32px;">Sem dados no perÃ­odo</p>
+        <?php if(empty($top_clientes)): ?><p style="color:var(--text3);font-size:13px;text-align:center;padding:32px;">Sem dados no período</p>
         <?php else: ?>
         <table class="top-table">
             <thead><tr><th>#</th><th>Cliente</th><th>Pedidos</th><th>Total</th></tr></thead>
@@ -198,7 +198,7 @@ $por_hora    = q($conn,"SELECT HOUR(criado_em) AS hora,COUNT(*) AS pedidos FROM 
 </div>
 
 <script>
-// Chart defaults â€” tema dark
+
 Chart.defaults.color = '#8fa8c8';
 Chart.defaults.borderColor = 'rgba(255,255,255,.06)';
 Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
@@ -215,7 +215,7 @@ const porCat    = <?= json_encode($por_categoria) ?>;
 const porHoraRaw= <?= json_encode($por_hora) ?>;
 const porEntrega= <?= json_encode($por_entrega) ?>;
 
-// Faturamento por dia
+
 new Chart(document.getElementById('chartFat'),{type:'line',data:{
     labels:fatDia.map(r=>{const[y,m,d]=r.dia.split('-');return d+'/'+m;}),
     datasets:[
@@ -223,19 +223,19 @@ new Chart(document.getElementById('chartFat'),{type:'line',data:{
         {label:'Pedidos',data:fatDia.map(r=>parseInt(r.pedidos)),borderColor:B,backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],tension:.4,pointBackgroundColor:B,pointRadius:3,yAxisID:'y2'}
     ]},options:{responsive:true,scales:{x:SCALES.x,y:{...SCALES.y,position:'left'},y2:{...SCALES.y,position:'right',grid:{drawOnChartArea:false}}},plugins:{legend:{position:'top',labels:{color:'#8fa8c8'}}}}});
 
-// Status
+
 new Chart(document.getElementById('chartStatus'),{type:'doughnut',data:{
     labels:porStatus.map(r=>ST_LABELS[r.status]||r.status),
     datasets:[{data:porStatus.map(r=>r.qtd),backgroundColor:porStatus.map(r=>ST_COLORS[r.status]||'#4d6b8a'),borderColor:'rgba(13,20,37,.8)',borderWidth:3,hoverOffset:10}]
 },options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#8fa8c8'}}}}});
 
-// Categoria
+
 new Chart(document.getElementById('chartCat'),{type:'bar',data:{
     labels:porCat.map(r=>r.categoria),
     datasets:[{label:'Receita (R$)',data:porCat.map(r=>parseFloat(r.receita)),backgroundColor:CAT_COLORS.map(c=>c+'99'),borderColor:CAT_COLORS,borderWidth:1.5,borderRadius:5}]
 },options:{responsive:true,indexAxis:'y',scales:{x:SCALES.x,y:SCALES.y},plugins:{legend:{display:false}}}});
 
-// HorÃ¡rio de pico
+
 const allHoras=Array.from({length:24},(_,i)=>i);
 const hmap={};porHoraRaw.forEach(r=>{hmap[r.hora]=r.pedidos;});
 const horaData=allHoras.map(h=>hmap[h]||0);
@@ -245,7 +245,7 @@ new Chart(document.getElementById('chartHora'),{type:'bar',data:{
     datasets:[{label:'Pedidos',data:horaData,backgroundColor:horaData.map(v=>v===mx&&v>0?O:B+'55'),borderColor:horaData.map(v=>v===mx&&v>0?O:B),borderWidth:1,borderRadius:4}]
 },options:{responsive:true,scales:{x:SCALES.x,y:SCALES.y},plugins:{legend:{display:false}}}});
 
-// Entrega
+
 new Chart(document.getElementById('chartEntrega'),{type:'pie',data:{
     labels:porEntrega.map(r=>r.tipo_retirada==='delivery'?'Delivery':'Retirada'),
     datasets:[{data:porEntrega.map(r=>r.qtd),backgroundColor:[B+'cc',G+'cc'],borderColor:[B,G],borderWidth:2.5,hoverOffset:10}]

@@ -1,7 +1,7 @@
--- ============================================================
--- MIGRAÇÃO: Recuperação de senha – FarmaVida
--- Execute uma única vez no banco farmavida
--- ============================================================
+
+
+
+
 USE farmavida;
 
 CREATE TABLE IF NOT EXISTS password_resets (

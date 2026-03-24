@@ -193,7 +193,7 @@ body::before {
     }
 }
 
-/* ── HEADER ── */
+ 
 .header {
     position: sticky;
     top: 0;
@@ -264,7 +264,7 @@ body::before {
     display: none;
 }
 
-/* ── BOTÕES — área mínima 48px ── */
+ 
 .btn {
     display: inline-flex;
     align-items: center;
@@ -352,7 +352,7 @@ body::before {
     justify-content: center;
 }
 
-/* ── CONTAINER ── */
+ 
 .container {
     max-width: 1400px;
     margin: 0 auto;
@@ -362,7 +362,7 @@ body::before {
     animation: fadeUp .35s ease;
 }
 
-/* ── CARD ── */
+ 
 .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -403,7 +403,7 @@ body::before {
     color: var(--text);
 }
 
-/* ── AUTH ── */
+ 
 body.auth-page {
     background: var(--bg);
     display: flex;
@@ -489,7 +489,7 @@ body.auth-page::after {
     margin-bottom: 22px;
 }
 
-/* ── INPUTS — font-size 16px evita zoom no iOS ── */
+ 
 input, textarea, select {
     width: 100%;
     min-height: var(--touch);
@@ -597,7 +597,7 @@ input[type="number"]::-webkit-inner-spin-button {
     min-height: var(--touch);
 }
 
-/* ── ALERTAS ── */
+ 
 .alert {
     padding: 13px 14px;
     border-radius: var(--radius-md);
@@ -641,7 +641,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--info);
 }
 
-/* ── BADGES ── */
+ 
 .badge {
     display: inline-flex;
     align-items: center;
@@ -696,7 +696,7 @@ input[type="number"]::-webkit-inner-spin-button {
     animation: badgePop .3s cubic-bezier(.34, 1.56, .64, 1);
 }
 
-/* ── TOAST — full width mobile ── */
+ 
 .toast {
     position: fixed;
     bottom: 14px;
@@ -727,7 +727,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--danger);
 }
 
-/* ── STATS — 2 colunas mobile ── */
+ 
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -781,7 +781,7 @@ input[type="number"]::-webkit-inner-spin-button {
     letter-spacing: .4px;
 }
 
-/* ── TABS — scroll horizontal ── */
+ 
 .tabs {
     display: flex;
     gap: 0;
@@ -848,7 +848,7 @@ input[type="number"]::-webkit-inner-spin-button {
     display: none;
 }
 
-/* ── TABELA — scroll horizontal ── */
+ 
 .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -897,7 +897,7 @@ input[type="number"]::-webkit-inner-spin-button {
     border: 1px solid var(--border);
 }
 
-/* ── PAGINAÇÃO ── */
+ 
 .paginacao {
     display: flex;
     gap: 6px;
@@ -933,7 +933,7 @@ input[type="number"]::-webkit-inner-spin-button {
     font-weight: 800;
 }
 
-/* ── PEDIDOS ── */
+ 
 .pedido {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -1051,7 +1051,7 @@ input[type="number"]::-webkit-inner-spin-button {
     background: rgba(255, 184, 48, .04);
 }
 
-/* Status form — empilhado no mobile */
+ 
 .status-form {
     display: flex;
     gap: 8px;
@@ -1068,7 +1068,7 @@ input[type="number"]::-webkit-inner-spin-button {
     justify-content: center;
 }
 
-/* ── CARRINHO ── */
+ 
 .cart-layout {
     display: grid;
     grid-template-columns: 1fr;
@@ -1139,7 +1139,7 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-shrink: 0;
 }
 
-/* Botões de quantidade 48×48 para toque fácil */
+ 
 .qty-btn {
     width: var(--touch);
     height: var(--touch);
@@ -1197,7 +1197,7 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-shrink: 0;
 }
 
-/* Checkout card */
+ 
 .checkout-card {
     background: var(--surface);
     border: 1px solid var(--border2);
@@ -1245,7 +1245,7 @@ input[type="number"]::-webkit-inner-spin-button {
     justify-content: space-between;
 }
 
-/* ── FILTROS ── */
+ 
 .filters-bar {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -1306,7 +1306,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--text3);
 }
 
-/* ── PRODUTOS — 2 colunas mobile ── */
+ 
 .produtos-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1398,7 +1398,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--primary);
 }
 
-/* ── HERO ── */
+ 
 .hero {
     padding: calc(var(--nav-h) + 32px) 16px 44px;
     position: relative;
@@ -1460,7 +1460,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--primary);
 }
 
-/* ── CATEGORIAS ── */
+ 
 .categoria-section {
     margin-bottom: 28px;
 }
@@ -1497,7 +1497,7 @@ input[type="number"]::-webkit-inner-spin-button {
     flex-shrink: 0;
 }
 
-/* ── EMPTY STATE ── */
+ 
 .empty, .empty-state {
     text-align: center;
     padding: 44px 16px;
@@ -1526,7 +1526,7 @@ input[type="number"]::-webkit-inner-spin-button {
     margin-bottom: 14px;
 }
 
-/* ── LINKS ── */
+ 
 .links {
     text-align: center;
     margin-top: 16px;
@@ -1543,7 +1543,7 @@ input[type="number"]::-webkit-inner-spin-button {
     line-height: var(--touch);
 }
 
-/* ── FLOATING CART ── */
+ 
 .floating-cart {
     position: fixed;
     bottom: 18px;
@@ -1587,7 +1587,7 @@ input[type="number"]::-webkit-inner-spin-button {
     border: 2px solid var(--bg);
 }
 
-/* ── MODAL — bottom sheet no mobile ── */
+ 
 .modal-overlay {
     display: none;
     position: fixed;
@@ -1654,7 +1654,7 @@ input[type="number"]::-webkit-inner-spin-button {
     color: #fff;
 }
 
-/* ── SEARCH BAR ── */
+ 
 .search-bar {
     display: flex;
     gap: 8px;
@@ -1671,9 +1671,9 @@ input[type="number"]::-webkit-inner-spin-button {
     position: relative;
 }
 
-/* ═══════════════════════════════════
-   TABLET — 600px+
-═══════════════════════════════════ */
+ 
+
+
 @media(min-width:600px) {
     :root {
         --nav-h: 66px;
@@ -1770,9 +1770,9 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 }
 
-/* ═══════════════════════════════════
-   DESKTOP — 1024px+
-═══════════════════════════════════ */
+ 
+
+
 @media(min-width:1024px) {
     :root {
         --nav-h: 70px;
@@ -1885,7 +1885,7 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 }
 
-/* ── PRINT ── */
+ 
 @media print {
 
     .header, .btn, .nav-buttons, .tabs, .auto-update-badge, .toast,
@@ -1909,43 +1909,43 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-/* ════════════════════════════════════════════════════════
-   MOBILE FIX — Nav, Stats, Alert Banner
-════════════════════════════════════════════════════════ */
+ 
+
+
 @media(max-width:700px) {
 
-    /* ── HEADER: texto sumiu dos botões, só ícones ── */
+     
     .nav-buttons .btn>i+span,
     .nav-buttons .btn>i~span {
         display: none;
     }
 
-    /* Texto direto após ícone (sem span): esconde via font-size zero e overflow */
+     
     .nav-buttons .btn {
         padding: 0 12px;
         font-size: 0;
-        /* esconde texto inline */
+         
         gap: 0;
     }
 
     .nav-buttons .btn>i {
         font-size: 16px;
-        /* ícone aparece normalmente */
+         
     }
 
-    /* Manter badge visível */
+     
     .nav-buttons .btn .badge-num {
         font-size: 9px;
     }
 
-    /* Logo: esconde "Admin" e badge auto-update do interior do logo */
+     
     .header .logo>span[style*="color:var(--text2)"],
     .header .logo>.auto-update-badge,
     .header .logo>span:not(.logo-icon) {
         display: none;
     }
 
-    /* ── STATS: 5 cards → 2+2+1, último ocupa linha toda ── */
+     
     .stats-grid {
         grid-template-columns: 1fr 1fr !important;
     }
@@ -1954,7 +1954,7 @@ input[type="number"]::-webkit-inner-spin-button {
         grid-column: 1 / -1;
     }
 
-    /* ── ALERT BANNER: empilha verticalmente ── */
+     
     .alert-estoque-inner {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -1968,13 +1968,13 @@ input[type="number"]::-webkit-inner-spin-button {
         min-height: 44px;
     }
 
-    /* ── PEDIDO HEADER: empilha ── */
+     
     .pedido-header {
         flex-direction: column !important;
         gap: 10px !important;
     }
 
-    /* ── STATUS FORM: coluna ── */
+     
     .status-form {
         flex-direction: column !important;
         width: 100% !important;
@@ -1985,7 +1985,7 @@ input[type="number"]::-webkit-inner-spin-button {
         justify-content: center;
     }
 
-    /* ── TABELA: scroll horizontal ── */
+     
     .card>table,
     .card>div>table {
         min-width: 480px;
@@ -2013,14 +2013,14 @@ input[type="number"]::-webkit-inner-spin-button {
     }
 }
 
-/* ════════════════════════════════════════════════════════
-   MOBILE FIX PATCH
-════════════════════════════════════════════════════════ */
+ 
 
-/* ── NAV: esconde textos, mantém ícones ── */
+
+
+ 
 @media(max-width:700px) {
 
-    /* Header logo: esconde textos extras, mantém logo+ícone */
+     
     .header .logo>span:not(:first-child) {
         display: none;
     }
@@ -2030,22 +2030,22 @@ input[type="number"]::-webkit-inner-spin-button {
         display: none !important;
     }
 
-    /* Nav buttons: todos viram ícone only */
+     
     .nav-buttons .btn>i~* {
         display: none;
     }
 
-    /* Stats: 5 cards → linha de 2 + linha de 3 */
+     
     .stats-grid {
         grid-template-columns: 1fr 1fr;
     }
 
-    /* O quinto filho preenche linha sozinho */
+     
     .stats-grid>.stat-card:last-child:nth-child(odd) {
         grid-column: 1 / -1;
     }
 
-    /* Alert banner: empilha verticalmente */
+     
     .alert-estoque-inner {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -2058,13 +2058,13 @@ input[type="number"]::-webkit-inner-spin-button {
         width: 100%;
     }
 
-    /* Pedido header: empilha */
+     
     .pedido-header {
         flex-direction: column;
         gap: 10px;
     }
 
-    /* Status form: botões ocupam 100% */
+     
     .status-form {
         flex-direction: column;
     }
@@ -2079,7 +2079,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 @media(max-width:400px) {
 
-    /* Extra pequeno: stats 1 coluna */
+     
     .stats-grid {
         grid-template-columns: 1fr 1fr;
     }
