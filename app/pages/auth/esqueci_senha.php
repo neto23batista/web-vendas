@@ -9,7 +9,7 @@ if (isset($_SESSION['usuario'])) redirecionar('index.php');
 
 if (schema_componentes_pendentes($conn, ['auth'])) {
     http_response_code(503);
-    die('Recuperação de senha temporariamente indisponível. Execute as migrações pendentes no painel administrativo.');
+    die('Recuperacao de senha temporariamente indisponivel. Execute as migracoes pendentes no painel administrativo.');
 }
 
 $mensagem = '';
@@ -21,10 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = sanitizar_texto($_POST['email'] ?? '');
 
     if (!validar_email($email)) {
-        $mensagem = 'E-mail inválido!';
+        $mensagem = 'E-mail invalido!';
         $tipo_msg = 'erro';
     } else {
-         
         $stmt = $conn->prepare("SELECT id, nome FROM usuarios WHERE email = ? AND tipo = 'cliente'");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -32,13 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($usuario) {
-             
             $stmt = $conn->prepare("UPDATE password_resets SET usado = 1 WHERE id_usuario = ? AND usado = 0");
             $stmt->bind_param("i", $usuario['id']);
             $stmt->execute();
             $stmt->close();
 
-            $token  = bin2hex(random_bytes(32));
+            $token = bin2hex(random_bytes(32));
             $expira = date('Y-m-d H:i:s', time() + 3600);
 
             $stmt = $conn->prepare("INSERT INTO password_resets (id_usuario, token, expira_em) VALUES (?, ?, ?)");
@@ -51,11 +49,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
             $link = $base . '/redefinir_senha.php?token=' . urlencode($token);
 
-            email_redefinir_senha($email, $usuario['nome'], $link);
+            $envio_ok = email_redefinir_senha($email, $usuario['nome'], $link);
+            if (!$envio_ok) {
+                $diretorioLogs = FARMAVIDA_ROOT . '/logs';
+                if (!is_dir($diretorioLogs)) {
+                    mkdir($diretorioLogs, 0755, true);
+                }
+
+                $linha = '[' . date('Y-m-d H:i:s') . '] email=' . $email . ' link=' . $link . PHP_EOL;
+                file_put_contents($diretorioLogs . '/password_reset_links.log', $linha, FILE_APPEND | LOCK_EX);
+
+                $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+                $ambiente_local = str_starts_with($host, 'localhost') || str_starts_with($host, '127.0.0.1') || str_starts_with($host, '[::1]');
+                if ($ambiente_local) {
+                    $mensagem = 'E-mail nao enviado neste ambiente local. Use este link de teste: <a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '">redefinir senha</a>';
+                    $tipo_msg = 'sucesso';
+                }
+            }
         }
 
-        $mensagem = 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes. Verifique também a pasta de spam.';
-        $tipo_msg = 'sucesso';
+        if ($mensagem === '') {
+            $mensagem = 'Se este e-mail estiver cadastrado, voce recebera as instrucoes em instantes. Verifique tambem a pasta de spam.';
+            $tipo_msg = 'sucesso';
+        }
     }
 }
 ?>
@@ -94,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        autocomplete="email">
             </div>
             <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
-                <i class="fas fa-paper-plane"></i> Enviar link de redefinição
+                <i class="fas fa-paper-plane"></i> Enviar link de redefinicao
             </button>
         </form>
         <?php endif; ?>

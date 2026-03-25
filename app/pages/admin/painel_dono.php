@@ -78,7 +78,62 @@ foreach ($pedidos as &$pedido) {
 }
 unset($pedido);
 
-$status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b981','entregue'=>'#6b7280','cancelado'=>'#ef4444'];
+$status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b981','entregue'=>'#00e5a0','cancelado'=>'#ef4444'];
+$status_fluxo = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
+
+function pedido_status_label_admin(string $status, bool $is_delivery): string {
+    return match ($status) {
+        'pendente' => 'Aguardando',
+        'preparando' => 'Separando',
+        'pronto' => $is_delivery ? 'Saiu p/ entrega' : 'Pronto p/ retirada',
+        'entregue' => $is_delivery ? 'Entregue' : 'Retirado',
+        'cancelado' => 'Cancelado',
+        default => 'Aguardando',
+    };
+}
+
+function pedido_status_icon_admin(string $status, bool $is_delivery): string {
+    return match ($status) {
+        'pendente' => 'hourglass-half',
+        'preparando' => 'box-open',
+        'pronto' => $is_delivery ? 'truck-fast' : 'store',
+        'entregue' => 'circle-check',
+        'cancelado' => 'ban',
+        default => 'hourglass-half',
+    };
+}
+
+function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_delivery, array $status_fluxo): string {
+    ob_start();
+    ?>
+    <div class="status-form" data-pedido-id="<?= $pedido_id ?>" data-status="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>" data-delivery="<?= $is_delivery ? '1' : '0' ?>">
+        <div class="status-current status-<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>" data-status-display>
+            <span class="status-current-icon"><i class="fas fa-<?= htmlspecialchars(pedido_status_icon_admin($status, $is_delivery), ENT_QUOTES, 'UTF-8') ?>"></i></span>
+            <span class="status-current-copy">
+                <span class="status-current-label"><?= htmlspecialchars(pedido_status_label_admin($status, $is_delivery), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="status-current-sub">Status atual do pedido</span>
+            </span>
+            <span class="status-current-state">Atual</span>
+        </div>
+        <div class="status-actions">
+            <?php foreach ($status_fluxo as $opcao): ?>
+                <button type="button"
+                        class="status-action status-<?= htmlspecialchars($opcao, ENT_QUOTES, 'UTF-8') ?> <?= $status === $opcao ? 'is-active' : '' ?>"
+                        onclick="atualizarStatus(<?= $pedido_id ?>, '<?= htmlspecialchars($opcao, ENT_QUOTES, 'UTF-8') ?>', this)">
+                    <i class="fas fa-<?= htmlspecialchars(pedido_status_icon_admin($opcao, $is_delivery), ENT_QUOTES, 'UTF-8') ?>"></i>
+                    <span><?= htmlspecialchars(pedido_status_label_admin($opcao, $is_delivery), ENT_QUOTES, 'UTF-8') ?></span>
+                </button>
+            <?php endforeach; ?>
+        </div>
+        <div class="status-feedback" data-status-feedback></div>
+        <a href="imprimir_pedido.php?id=<?= $pedido_id ?>" target="_blank"
+           class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
+            <i class="fas fa-print"></i> Nota
+        </a>
+    </div>
+    <?php
+    return (string)ob_get_clean();
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -198,6 +253,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 <?php else: ?>
                     <?php foreach ($pedidos as $pedido): ?>
                         <div class="pedido <?= $pedido['conta_solicitada'] == 1 ? 'pedido-conta-solicitada' : '' ?>"
+                             data-status="<?= htmlspecialchars($pedido['status'], ENT_QUOTES, 'UTF-8') ?>"
                              id="pedido-<?= $pedido['id'] ?>">
                             <div class="pedido-header">
                                 <div style="flex:1;">
@@ -247,20 +303,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                     <div class="pedido-total"><?= formatar_preco($pedido['total']) ?></div>
                                 </div>
 
-                                <div class="status-form">
-                                    <select id="status-<?= $pedido['id'] ?>"
-                                            onchange="atualizarStatus(<?= $pedido['id'] ?>, this.value)">
-                                        <option value="pendente"   <?= $pedido['status']=='pendente'  ?'selected':'' ?>>Aguardando</option>
-                                        <option value="preparando" <?= $pedido['status']=='preparando'?'selected':'' ?>>Separando</option>
-                                        <option value="pronto"     <?= $pedido['status']=='pronto'    ?'selected':'' ?>><?= $is_delivery ? 'Saiu p/ entrega' : 'Pronto p/ Retirada' ?></option>
-                                        <option value="entregue"   <?= $pedido['status']=='entregue'  ?'selected':'' ?>><?= $is_delivery ? 'Entregue' : 'Retirado' ?></option>
-                                        <option value="cancelado"  <?= $pedido['status']=='cancelado' ?'selected':'' ?>>Cancelado</option>
-                                    </select>
-                                    <a href="imprimir_pedido.php?id=<?= $pedido['id'] ?>" target="_blank"
-                                       class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
-                                        <i class="fas fa-print"></i> Nota
-                                    </a>
-                                </div>
+                                <?= renderizar_status_form_admin((int)$pedido['id'], (string)$pedido['status'], $is_delivery, $status_fluxo) ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -293,6 +336,82 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
 
     <script>
         const CSRF_TOKEN = <?= json_encode(gerar_token_csrf()) ?>;
+        const STATUS_FLOW = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
+
+        function statusLabel(status, isDelivery) {
+            switch (status) {
+                case 'pendente': return 'Aguardando';
+                case 'preparando': return 'Separando';
+                case 'pronto': return isDelivery ? 'Saiu p/ entrega' : 'Pronto p/ retirada';
+                case 'entregue': return isDelivery ? 'Entregue' : 'Retirado';
+                case 'cancelado': return 'Cancelado';
+                default: return 'Aguardando';
+            }
+        }
+
+        function statusIcon(status, isDelivery) {
+            switch (status) {
+                case 'pendente': return 'hourglass-half';
+                case 'preparando': return 'box-open';
+                case 'pronto': return isDelivery ? 'truck-fast' : 'store';
+                case 'entregue': return 'circle-check';
+                case 'cancelado': return 'ban';
+                default: return 'hourglass-half';
+            }
+        }
+
+        function renderStatusFormMarkup(idPedido, status, isDelivery, feedback = '', feedbackType = '') {
+            const actions = STATUS_FLOW.map((option) => `
+                <button type="button"
+                        class="status-action status-${option} ${status === option ? 'is-active' : ''}"
+                        onclick="atualizarStatus(${idPedido}, '${option}', this)">
+                    <i class="fas fa-${statusIcon(option, isDelivery)}"></i>
+                    <span>${statusLabel(option, isDelivery)}</span>
+                </button>
+            `).join('');
+
+            return `
+                <div class="status-current status-${status}" data-status-display>
+                    <span class="status-current-icon"><i class="fas fa-${statusIcon(status, isDelivery)}"></i></span>
+                    <span class="status-current-copy">
+                        <span class="status-current-label">${statusLabel(status, isDelivery)}</span>
+                        <span class="status-current-sub">Status atual do pedido</span>
+                    </span>
+                    <span class="status-current-state">Atual</span>
+                </div>
+                <div class="status-actions">${actions}</div>
+                <div class="status-feedback ${feedbackType ? `is-${feedbackType}` : ''}" data-status-feedback>${feedback}</div>
+                <a href="imprimir_pedido.php?id=${idPedido}" target="_blank"
+                   class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
+                    <i class="fas fa-print"></i> Nota
+                </a>
+            `;
+        }
+
+        function setStatusFormState(form, status, feedback = '', feedbackType = '') {
+            if (!form) return;
+            const idPedido = Number(form.dataset.pedidoId || '0');
+            const isDelivery = form.dataset.delivery === '1';
+            form.dataset.status = status;
+            form.innerHTML = renderStatusFormMarkup(idPedido, status, isDelivery, feedback, feedbackType);
+            const pedido = form.closest('.pedido');
+            if (pedido) {
+                pedido.dataset.status = status;
+            }
+        }
+
+        function setStatusLoading(form, loading) {
+            if (!form) return;
+            form.classList.toggle('is-loading', loading);
+            form.querySelectorAll('.status-action').forEach((button) => {
+                button.disabled = loading;
+            });
+            const feedback = form.querySelector('[data-status-feedback]');
+            if (feedback && loading) {
+                feedback.className = 'status-feedback';
+                feedback.textContent = 'Atualizando status...';
+            }
+        }
 
         function mostrarToast(msg, tipo='success') {
             const t = document.createElement('div');
@@ -313,6 +432,52 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 if (data.sucesso) { mostrarToast('Status atualizado!'); atualizarStats(); }
                 else mostrarToast(data.erro || 'Erro', 'error');
             } catch(e) { mostrarToast('Erro de conexão','error'); }
+        }
+
+        function upgradeLegacyStatusControls(root = document) {
+            root.querySelectorAll('.status-form').forEach((form) => {
+                if (!form.querySelector('select')) return;
+                const select = form.querySelector('select');
+                const pedidoId = Number((select.id || '').replace('status-', ''));
+                const prontoOption = select.querySelector('option[value="pronto"]');
+                const isDelivery = (prontoOption?.textContent || '').toLowerCase().includes('entrega');
+                form.dataset.pedidoId = String(pedidoId);
+                form.dataset.status = select.value;
+                form.dataset.delivery = isDelivery ? '1' : '0';
+                setStatusFormState(form, select.value);
+            });
+        }
+
+        async function atualizarStatus(idPedido, status, button) {
+            const form = button ? button.closest('.status-form') : document.querySelector(`.status-form[data-pedido-id="${idPedido}"]`);
+            if (!form) return;
+
+            const statusAnterior = form.dataset.status || '';
+            if (statusAnterior === status) return;
+
+            setStatusLoading(form, true);
+
+            try {
+                const fd = new FormData();
+                fd.append('action','atualizar_status');
+                fd.append('id_pedido', idPedido);
+                fd.append('status', status);
+                fd.append('csrf_token', CSRF_TOKEN);
+                const data = await (await fetch('ajax_handler.php', {method:'POST', body:fd})).json();
+                if (data.sucesso) {
+                    setStatusFormState(form, status, 'Status atualizado com sucesso.', 'success');
+                    mostrarToast('Status atualizado!');
+                    atualizarStats();
+                } else {
+                    setStatusFormState(form, statusAnterior, data.erro || 'Erro ao atualizar o status.', 'error');
+                    mostrarToast(data.erro || 'Erro', 'error');
+                }
+            } catch(e) {
+                setStatusFormState(form, statusAnterior, 'Erro de conexao ao atualizar o status.', 'error');
+                mostrarToast('Erro de conexao', 'error');
+            } finally {
+                setStatusLoading(form, false);
+            }
         }
 
         function formatarPreco(v) { return 'R$ '+parseFloat(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
@@ -350,7 +515,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                         itensHtml += `<li><span class="item-qty">${item.quantidade}x</span><span class="item-name">${item.produto_nome}</span><span class="item-price">${formatarPreco(item.preco_unitario*item.quantidade)}</span></li>`;
                     });
 
-                    html += `<div class="pedido ${isNovo?'pedido-novo':''} ${pedido.conta_solicitada==1?'pedido-conta-solicitada':''}" id="pedido-${pedido.id}">
+                    html += `<div class="pedido ${isNovo?'pedido-novo':''} ${pedido.conta_solicitada==1?'pedido-conta-solicitada':''}" data-status="${pedido.status}" id="pedido-${pedido.id}">
                         <div class="pedido-header">
                             <div style="flex:1;">
                                 ${pedido.conta_solicitada==1?`<div style="background:var(--warning);color:#fff;padding:7px 14px;border-radius:var(--radius-full);margin-bottom:10px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:13px;"><i class="fas fa-cash-register"></i> CLIENTE QUER PAGAR!</div>`:''}
@@ -370,7 +535,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                                 <div class="pedido-total">${formatarPreco(pedido.total)}</div>
                             </div>
                             <div class="status-form">
-                                <select id="status-${pedido.id}" onchange="atualizarStatus(${pedido.id}, this.value)">
+                                <select id="status-${pedido.id}" class="status-select" onchange="atualizarStatus(${pedido.id}, this.value)">
                                     <option value="pendente"   ${pedido.status==='pendente'  ?'selected':''}>Aguardando</option>
                                     <option value="preparando" ${pedido.status==='preparando'?'selected':''}>Separando</option>
                                     <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>${isDelivery ? 'Saiu p/ entrega' : 'Pronto p/ Retirada'}</option>
@@ -387,6 +552,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
                 });
 
                 container.innerHTML = html;
+                upgradeLegacyStatusControls(container);
                 if (novosPedidos) mostrarToast('Novo pedido recebido!');
             } catch(e) { console.error(e); }
         }
@@ -427,6 +593,7 @@ $status_cores = ['pendente'=>'#f59e0b','preparando'=>'#3b82f6','pronto'=>'#10b98
             } catch(e) {}
         }
 
+        upgradeLegacyStatusControls();
         setInterval(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 30000);
         setTimeout(() => { atualizarStats(); verificarEstoque(); }, 1000);
     </script>

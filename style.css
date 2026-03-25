@@ -1051,21 +1051,192 @@ input[type="number"]::-webkit-inner-spin-button {
     background: rgba(255, 184, 48, .04);
 }
 
+.pedido[data-status="pendente"] {
+    border-left-color: #f59e0b;
+}
+
+.pedido[data-status="preparando"] {
+    border-left-color: #3b82f6;
+}
+
+.pedido[data-status="pronto"] {
+    border-left-color: #10b981;
+}
+
+.pedido[data-status="entregue"] {
+    border-left-color: #00e5a0;
+}
+
+.pedido[data-status="cancelado"] {
+    border-left-color: #ef4444;
+}
+
  
 .status-form {
-    display: flex;
-    gap: 8px;
-    align-items: stretch;
-    flex-direction: column;
+    display: grid;
+    gap: 10px;
     margin-top: 12px;
 }
 
-.status-form select {
-    min-height: var(--touch);
+.status-current {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    min-width: 260px;
+}
+
+.status-current-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, .08);
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.status-current-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.status-current-label {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.status-current-sub {
+    font-size: 11px;
+    color: var(--text2);
+}
+
+.status-current-state {
+    margin-left: auto;
+    padding: 5px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, .08);
+    color: var(--text2);
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.status-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.status-action {
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--t);
+}
+
+.status-action:hover {
+    transform: translateY(-1px);
+    border-color: var(--border2);
+    color: var(--text);
+}
+
+.status-action:disabled {
+    cursor: wait;
+    opacity: .7;
+    transform: none;
+}
+
+.status-feedback {
+    min-height: 16px;
+    font-size: 11px;
+    color: var(--text3);
+}
+
+.status-feedback.is-success {
+    color: #b5ffe4;
+}
+
+.status-feedback.is-error {
+    color: #fecaca;
+}
+
+.status-form.is-loading .status-actions,
+.status-form.is-loading a.btn {
+    pointer-events: none;
+}
+
+.status-current.status-pendente,
+.status-action.status-pendente.is-active {
+    background: rgba(245, 158, 11, .16);
+    border-color: rgba(245, 158, 11, .4);
+    color: #ffe2a8;
+}
+
+.status-current.status-preparando,
+.status-action.status-preparando.is-active {
+    background: rgba(59, 130, 246, .16);
+    border-color: rgba(59, 130, 246, .4);
+    color: #bfdbfe;
+}
+
+.status-current.status-pronto,
+.status-action.status-pronto.is-active {
+    background: rgba(16, 185, 129, .16);
+    border-color: rgba(16, 185, 129, .4);
+    color: #bbf7d0;
+}
+
+.status-current.status-entregue,
+.status-action.status-entregue.is-active {
+    background: rgba(0, 229, 160, .16);
+    border-color: rgba(0, 229, 160, .4);
+    color: #b5ffe4;
+}
+
+.status-current.status-cancelado,
+.status-action.status-cancelado.is-active {
+    background: rgba(239, 68, 68, .16);
+    border-color: rgba(239, 68, 68, .4);
+    color: #fecaca;
+}
+
+.status-current[class*="status-"] .status-current-label,
+.status-action.is-active {
+    color: inherit;
 }
 
 .status-form a.btn, .status-form button.btn {
     justify-content: center;
+}
+
+@media (max-width: 520px) {
+    .status-current {
+        min-width: 0;
+    }
+
+    .status-actions {
+        grid-template-columns: 1fr;
+    }
 }
 
  
