@@ -119,9 +119,13 @@ $preferencia = [
 $resposta = mp_request('POST', '/checkout/preferences', $preferencia);
 
 if (isset($resposta['erro']) || !isset($resposta['id'])) {
-    @mkdir('logs', 0755, true);
+    $logsDir = FARMAVIDA_ROOT . '/logs';
+    @mkdir($logsDir, 0755, true);
     $log = date('Y-m-d H:i:s') . " | Pedido #$id_pedido | Erro MP: " . json_encode($resposta) . "\n";
-    file_put_contents('logs/mp_erros.log', $log, FILE_APPEND);
+    file_put_contents($logsDir . '/mp_erros.log', $log, FILE_APPEND);
+    if (!empty($resposta['configuracao'])) {
+        redirecionar('painel_cliente.php', 'Mercado Pago não configurado. Verifique o ambiente antes de gerar o checkout.', 'erro');
+    }
     redirecionar('painel_cliente.php', 'Erro ao conectar ao Mercado Pago. Tente novamente.', 'erro');
 }
 
@@ -137,9 +141,10 @@ $stmt->execute();
 $stmt->close();
 
  
-@mkdir('logs', 0755, true);
+$logsDir = FARMAVIDA_ROOT . '/logs';
+@mkdir($logsDir, 0755, true);
 $log = date('Y-m-d H:i:s') . " | Pedido #$id_pedido | Preference: $preference_id\n";
-file_put_contents('logs/mp_pagamentos.log', $log, FILE_APPEND);
+file_put_contents($logsDir . '/mp_pagamentos.log', $log, FILE_APPEND);
 
  
 header('Location: ' . $init_point);

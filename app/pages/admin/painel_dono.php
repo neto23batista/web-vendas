@@ -247,7 +247,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
         <div class="card">
             <h2><i class="fas fa-clipboard-list"></i> Pedidos</h2>
 
-            <div id="pedidos-container">
+            <div id="pedidos-lista">
                 <?php if (empty($pedidos)): ?>
                     <div class="empty"><i class="fas fa-receipt"></i><h2>Nenhum pedido ainda</h2></div>
                 <?php else: ?>
@@ -307,28 +307,29 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                             </div>
                         </div>
                     <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
-                    
-                    <?php if ($total_paginas > 1): ?>
-                    <div class="paginacao">
-                        <?php if ($pagina > 1): ?>
-                            <a href="?pagina=<?= $pagina - 1 ?>">&#8592; Anterior</a>
-                        <?php endif; ?>
-                        <?php for ($i = max(1, $pagina - 2); $i <= min($total_paginas, $pagina + 2); $i++): ?>
-                            <?php if ($i === $pagina): ?>
-                                <span class="atual"><?= $i ?></span>
-                            <?php else: ?>
-                                <a href="?pagina=<?= $i ?>"><?= $i ?></a>
-                            <?php endif; ?>
-                        <?php endfor; ?>
-                        <?php if ($pagina < $total_paginas): ?>
-                            <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
-                        <?php endif; ?>
-                        <span style="color:var(--text2);padding:7px 0;">
-                            Página <?= $pagina ?> de <?= $total_paginas ?>
-                        </span>
-                    </div>
+            <div id="pedidos-paginacao">
+                <?php if ($total_paginas > 1): ?>
+                <div class="paginacao">
+                    <?php if ($pagina > 1): ?>
+                        <a href="?pagina=<?= $pagina - 1 ?>">&#8592; Anterior</a>
                     <?php endif; ?>
+                    <?php for ($i = max(1, $pagina - 2); $i <= min($total_paginas, $pagina + 2); $i++): ?>
+                        <?php if ($i === $pagina): ?>
+                            <span class="atual"><?= $i ?></span>
+                        <?php else: ?>
+                            <a href="?pagina=<?= $i ?>"><?= $i ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                    <?php if ($pagina < $total_paginas): ?>
+                        <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
+                    <?php endif; ?>
+                    <span style="color:var(--text2);padding:7px 0;">
+                        Página <?= $pagina ?> de <?= $total_paginas ?>
+                    </span>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -337,6 +338,20 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
     <script>
         const CSRF_TOKEN = <?= json_encode(gerar_token_csrf()) ?>;
         const STATUS_FLOW = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
+        const PEDIDOS_PAGINA_INICIAL = <?= (int)$pagina ?>;
+        const PEDIDOS_POR_PAGINA = <?= (int)$por_pag ?>;
+
+        let paginaAtualPedidos = PEDIDOS_PAGINA_INICIAL;
+        let pedidosAtuais = new Set([<?= implode(',', array_column($pedidos, 'id')) ?>]);
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function statusLabel(status, isDelivery) {
             switch (status) {
@@ -361,6 +376,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
         }
 
         function renderStatusFormMarkup(idPedido, status, isDelivery, feedback = '', feedbackType = '') {
+            const safeFeedback = escapeHtml(feedback);
             const actions = STATUS_FLOW.map((option) => `
                 <button type="button"
                         class="status-action status-${option} ${status === option ? 'is-active' : ''}"
@@ -380,11 +396,19 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                     <span class="status-current-state">Atual</span>
                 </div>
                 <div class="status-actions">${actions}</div>
-                <div class="status-feedback ${feedbackType ? `is-${feedbackType}` : ''}" data-status-feedback>${feedback}</div>
+                <div class="status-feedback ${feedbackType ? `is-${feedbackType}` : ''}" data-status-feedback>${safeFeedback}</div>
                 <a href="imprimir_pedido.php?id=${idPedido}" target="_blank"
                    class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
                     <i class="fas fa-print"></i> Nota
                 </a>
+            `;
+        }
+
+        function renderStatusFormContainer(idPedido, status, isDelivery, feedback = '', feedbackType = '') {
+            return `
+                <div class="status-form" data-pedido-id="${idPedido}" data-status="${escapeHtml(status)}" data-delivery="${isDelivery ? '1' : '0'}">
+                    ${renderStatusFormMarkup(idPedido, status, isDelivery, feedback, feedbackType)}
+                </div>
             `;
         }
 
@@ -413,39 +437,17 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
             }
         }
 
-        function mostrarToast(msg, tipo='success') {
+        function mostrarToast(msg, tipo = 'success') {
             const t = document.createElement('div');
-            t.className = `toast ${tipo==='error'?'error':''}`;
-            t.innerHTML = `<i class="fas fa-${tipo==='success'?'check':'exclamation'}-circle"></i> ${msg}`;
+            const icon = tipo === 'success' ? 'check' : 'exclamation';
+            t.className = `toast ${tipo === 'error' ? 'error' : ''}`;
+            t.innerHTML = `<i class="fas fa-${icon}-circle"></i><span></span>`;
+            t.querySelector('span').textContent = msg;
             document.body.appendChild(t);
-            setTimeout(()=>{ t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3000);
-        }
-
-        async function atualizarStatus(idPedido, status) {
-            try {
-                const fd = new FormData();
-                fd.append('action','atualizar_status');
-                fd.append('id_pedido', idPedido);
-                fd.append('status', status);
-                fd.append('csrf_token', CSRF_TOKEN);
-                const data = await (await fetch('ajax_handler.php', {method:'POST', body:fd})).json();
-                if (data.sucesso) { mostrarToast('Status atualizado!'); atualizarStats(); }
-                else mostrarToast(data.erro || 'Erro', 'error');
-            } catch(e) { mostrarToast('Erro de conexão','error'); }
-        }
-
-        function upgradeLegacyStatusControls(root = document) {
-            root.querySelectorAll('.status-form').forEach((form) => {
-                if (!form.querySelector('select')) return;
-                const select = form.querySelector('select');
-                const pedidoId = Number((select.id || '').replace('status-', ''));
-                const prontoOption = select.querySelector('option[value="pronto"]');
-                const isDelivery = (prontoOption?.textContent || '').toLowerCase().includes('entrega');
-                form.dataset.pedidoId = String(pedidoId);
-                form.dataset.status = select.value;
-                form.dataset.delivery = isDelivery ? '1' : '0';
-                setStatusFormState(form, select.value);
-            });
+            setTimeout(() => {
+                t.style.opacity = '0';
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
         }
 
         async function atualizarStatus(idPedido, status, button) {
@@ -459,11 +461,12 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
 
             try {
                 const fd = new FormData();
-                fd.append('action','atualizar_status');
+                fd.append('action', 'atualizar_status');
                 fd.append('id_pedido', idPedido);
                 fd.append('status', status);
                 fd.append('csrf_token', CSRF_TOKEN);
-                const data = await (await fetch('ajax_handler.php', {method:'POST', body:fd})).json();
+                const resposta = await fetch('ajax_handler.php', { method: 'POST', body: fd });
+                const data = await resposta.json();
                 if (data.sucesso) {
                     setStatusFormState(form, status, 'Status atualizado com sucesso.', 'success');
                     mostrarToast('Status atualizado!');
@@ -472,7 +475,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                     setStatusFormState(form, statusAnterior, data.erro || 'Erro ao atualizar o status.', 'error');
                     mostrarToast(data.erro || 'Erro', 'error');
                 }
-            } catch(e) {
+            } catch (e) {
                 setStatusFormState(form, statusAnterior, 'Erro de conexao ao atualizar o status.', 'error');
                 mostrarToast('Erro de conexao', 'error');
             } finally {
@@ -480,97 +483,203 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
             }
         }
 
-        function formatarPreco(v) { return 'R$ '+parseFloat(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
-        function formatarData(d) { const dt=new Date(d); return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+        function formatarPreco(v) {
+            return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatarData(d) {
+            const dt = new Date(d);
+            if (Number.isNaN(dt.getTime())) {
+                return escapeHtml(d);
+            }
+            return dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function isDeliveryPedido(pedido) {
+            return String((pedido && pedido.observacoes) ? pedido.observacoes : '').includes('DELIVERY');
+        }
+
+        function renderPagamentoBadge(pedido) {
+            if (String(pedido.forma_pagamento ?? '') !== 'app') {
+                return '';
+            }
+
+            const statusPagamento = String(pedido.pagamento_status ?? 'pendente');
+            const map = {
+                aprovado: ['#059669', 'circle-check', 'Pago'],
+                em_analise: ['#d97706', 'clock', 'Em análise'],
+                recusado: ['#dc2626', 'circle-xmark', 'Recusado'],
+                cancelado: ['#6b7280', 'ban', 'Cancelado'],
+                pendente: ['#d97706', 'clock', 'Aguard. pag.'],
+            };
+            const pg = map[statusPagamento] || map.pendente;
+
+            return `
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:${pg[0]}1a;color:${pg[0]};">
+                    <i class="fas fa-${pg[1]}"></i> ${pg[2]} · MP
+                </span>
+            `;
+        }
+
+        function renderItensPedido(itens) {
+            return (itens || []).map((item) => `
+                <li>
+                    <span class="item-qty">${Number(item.quantidade)}x</span>
+                    <span class="item-name">${escapeHtml(item.produto_nome)}</span>
+                    <span class="item-price">${formatarPreco(Number(item.preco_unitario || 0) * Number(item.quantidade || 0))}</span>
+                </li>
+            `).join('');
+        }
+
+        function renderPedidoCard(pedido, isNovo = false) {
+            const idPedido = Number(pedido.id || 0);
+            const status = String(pedido.status || 'pendente');
+            const isDelivery = isDeliveryPedido(pedido);
+            const contaSolicitada = Number(pedido.conta_solicitada || 0) === 1;
+            const deliveryBadgeStyle = isDelivery
+                ? 'background:rgba(77,156,255,.12);color:var(--secondary);'
+                : 'background:rgba(0,229,160,.1);color:var(--primary);';
+
+            return `
+                <div class="pedido ${isNovo ? 'pedido-novo' : ''} ${contaSolicitada ? 'pedido-conta-solicitada' : ''}" data-status="${escapeHtml(status)}" id="pedido-${idPedido}">
+                    <div class="pedido-header">
+                        <div style="flex:1;">
+                            ${contaSolicitada ? `<div style="background:var(--warning);color:#fff;padding:7px 14px;border-radius:var(--radius-full);margin-bottom:10px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:13px;"><i class="fas fa-cash-register"></i> CLIENTE QUER PAGAR!</div>` : ''}
+                            <div class="pedido-numero">Pedido #${idPedido}</div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                                <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;${deliveryBadgeStyle}">
+                                    <i class="fas fa-${isDelivery ? 'motorcycle' : 'store-alt'}"></i>
+                                    ${isDelivery ? 'Delivery' : 'Retirada no Local'}
+                                </span>
+                                ${renderPagamentoBadge(pedido)}
+                            </div>
+                            <div class="pedido-info">
+                                <strong><i class="fas fa-user"></i></strong> ${escapeHtml(pedido.cliente_nome)}<br>
+                                ${pedido.telefone ? `<strong><i class="fas fa-phone"></i></strong> ${escapeHtml(pedido.telefone)}<br>` : ''}
+                                ${pedido.endereco ? `<strong><i class="fas fa-map-marker-alt"></i></strong> ${escapeHtml(pedido.endereco)}<br>` : ''}
+                                <strong><i class="fas fa-calendar-alt"></i></strong> ${formatarData(pedido.criado_em)}
+                                ${pedido.observacoes ? `<br><strong><i class="fas fa-comment-medical"></i></strong> ${escapeHtml(pedido.observacoes)}` : ''}
+                            </div>
+                            <div class="pedido-itens">
+                                <strong><i class="fas fa-pills"></i> Itens do Pedido:</strong>
+                                <ul class="lista-itens">${renderItensPedido(pedido.itens)}</ul>
+                            </div>
+                            <div class="pedido-total">${formatarPreco(pedido.total)}</div>
+                        </div>
+                        ${renderStatusFormContainer(idPedido, status, isDelivery)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPaginacao(meta) {
+            if (!meta || Number(meta.total_paginas || 0) <= 1) {
+                return '';
+            }
+
+            const pagina = Number(meta.pagina || 1);
+            const totalPaginas = Number(meta.total_paginas || 1);
+            const inicio = Math.max(1, pagina - 2);
+            const fim = Math.min(totalPaginas, pagina + 2);
+            let html = '<div class="paginacao">';
+
+            if (pagina > 1) {
+                html += `<a href="?pagina=${pagina - 1}">&#8592; Anterior</a>`;
+            }
+
+            for (let i = inicio; i <= fim; i += 1) {
+                if (i === pagina) {
+                    html += `<span class="atual">${i}</span>`;
+                } else {
+                    html += `<a href="?pagina=${i}">${i}</a>`;
+                }
+            }
+
+            if (pagina < totalPaginas) {
+                html += `<a href="?pagina=${pagina + 1}">Próxima &#8594;</a>`;
+            }
+
+            html += `<span style="color:var(--text2);padding:7px 0;">Página ${pagina} de ${totalPaginas}</span>`;
+            html += '</div>';
+            return html;
+        }
+
+        function atualizarUrlPaginacao(pagina) {
+            const url = new URL(window.location.href);
+            if (pagina > 1) {
+                url.searchParams.set('pagina', String(pagina));
+            } else {
+                url.searchParams.delete('pagina');
+            }
+            window.history.replaceState({}, '', url);
+        }
 
         async function atualizarStats() {
             try {
                 const data = await (await fetch('ajax_handler.php?action=buscar_stats_dono')).json();
                 if (data.stats) {
-                    document.getElementById('stat-total-pedidos').textContent = data.stats.total_pedidos||0;
-                    document.getElementById('stat-faturamento').textContent   = formatarPreco(data.stats.faturamento_total||0);
-                    document.getElementById('stat-pendentes').textContent     = data.stats.pedidos_pendentes||0;
-                    document.getElementById('stat-clientes').textContent      = data.total_clientes||0;
-                    document.getElementById('stat-produtos').textContent      = data.total_produtos||0;
+                    document.getElementById('stat-total-pedidos').textContent = data.stats.total_pedidos || 0;
+                    document.getElementById('stat-faturamento').textContent = formatarPreco(data.stats.faturamento_total || 0);
+                    document.getElementById('stat-pendentes').textContent = data.stats.pedidos_pendentes || 0;
+                    document.getElementById('stat-clientes').textContent = data.total_clientes || 0;
+                    document.getElementById('stat-produtos').textContent = data.total_produtos || 0;
                 }
-            } catch(e) {}
+            } catch (e) {}
         }
-
-        let pedidosAtuais = new Set([<?= implode(',', array_column($pedidos, 'id')) ?>]);
 
         async function atualizarPedidos() {
             try {
-                const data = await (await fetch('ajax_handler.php?action=buscar_pedidos_dono')).json();
-                if (!data.pedidos || !data.pedidos.length) return;
-                const container = document.getElementById('pedidos-container');
-                let html = ''; let novosPedidos = false;
+                const resposta = await fetch(`ajax_handler.php?action=buscar_pedidos_dono&pagina=${paginaAtualPedidos}&limite=${PEDIDOS_POR_PAGINA}`);
+                const data = await resposta.json();
+                if (data.erro) {
+                    return;
+                }
 
-                data.pedidos.forEach(pedido => {
-                    const isNovo     = !pedidosAtuais.has(pedido.id);
-                    const isDelivery = pedido.observacoes && pedido.observacoes.includes('DELIVERY');
-                    if (isNovo) { novosPedidos = true; pedidosAtuais.add(pedido.id); }
+                const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
+                const meta = data.paginacao || null;
+                if (meta && Number(meta.pagina || 0) > 0) {
+                    paginaAtualPedidos = Number(meta.pagina);
+                    atualizarUrlPaginacao(paginaAtualPedidos);
+                }
 
-                    let itensHtml = '';
-                    (pedido.itens||[]).forEach(item => {
-                        itensHtml += `<li><span class="item-qty">${item.quantidade}x</span><span class="item-name">${item.produto_nome}</span><span class="item-price">${formatarPreco(item.preco_unitario*item.quantidade)}</span></li>`;
-                    });
+                const lista = document.getElementById('pedidos-lista');
+                const paginacao = document.getElementById('pedidos-paginacao');
+                const idsPaginaAtual = new Set(pedidos.map((pedido) => Number(pedido.id)));
+                const houveNovoPedido = paginaAtualPedidos === 1 && pedidos.some((pedido) => !pedidosAtuais.has(Number(pedido.id)));
 
-                    html += `<div class="pedido ${isNovo?'pedido-novo':''} ${pedido.conta_solicitada==1?'pedido-conta-solicitada':''}" data-status="${pedido.status}" id="pedido-${pedido.id}">
-                        <div class="pedido-header">
-                            <div style="flex:1;">
-                                ${pedido.conta_solicitada==1?`<div style="background:var(--warning);color:#fff;padding:7px 14px;border-radius:var(--radius-full);margin-bottom:10px;font-weight:700;display:inline-flex;align-items:center;gap:8px;font-size:13px;"><i class="fas fa-cash-register"></i> CLIENTE QUER PAGAR!</div>`:''}
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                    <div class="pedido-numero" style="margin-bottom:0;">Pedido #${pedido.id}</div>
-                                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;${isDelivery?'background:rgba(77,156,255,.12);color:var(--secondary);':'background:rgba(0,229,160,.1);color:var(--primary);'}">
-                                        ${isDelivery?'<i class="fas fa-motorcycle"></i> Delivery':'<i class="fas fa-store-alt"></i> Retirada'}
-                                    </span>
-                                </div>
-                                <div class="pedido-info">
-                                    <strong><i class="fas fa-user"></i></strong> ${pedido.cliente_nome}<br>
-                                    ${pedido.telefone?`<strong><i class="fas fa-phone"></i></strong> ${pedido.telefone}<br>`:''}
-                                    <strong><i class="fas fa-calendar-alt"></i></strong> ${formatarData(pedido.criado_em)}
-                                    ${pedido.observacoes?`<br><strong><i class="fas fa-comment-medical"></i></strong> ${pedido.observacoes}`:''}
-                                </div>
-                                <div class="pedido-itens"><strong><i class="fas fa-pills"></i> Itens:</strong><ul class="lista-itens">${itensHtml}</ul></div>
-                                <div class="pedido-total">${formatarPreco(pedido.total)}</div>
-                            </div>
-                            <div class="status-form">
-                                <select id="status-${pedido.id}" class="status-select" onchange="atualizarStatus(${pedido.id}, this.value)">
-                                    <option value="pendente"   ${pedido.status==='pendente'  ?'selected':''}>Aguardando</option>
-                                    <option value="preparando" ${pedido.status==='preparando'?'selected':''}>Separando</option>
-                                    <option value="pronto"     ${pedido.status==='pronto'    ?'selected':''}>${isDelivery ? 'Saiu p/ entrega' : 'Pronto p/ Retirada'}</option>
-                                    <option value="entregue"   ${pedido.status==='entregue'  ?'selected':''}>${isDelivery ? 'Entregue' : 'Retirado'}</option>
-                                    <option value="cancelado"  ${pedido.status==='cancelado' ?'selected':''}>Cancelado</option>
-                                </select>
-                                <a href="imprimir_pedido.php?id=${pedido.id}" target="_blank"
-                                   class="btn btn-primary" style="padding:10px 18px;text-decoration:none;">
-                                    <i class="fas fa-print"></i> Nota
-                                </a>
-                            </div>
-                        </div>
-                    </div>`;
-                });
+                if (pedidos.length === 0) {
+                    lista.innerHTML = '<div class="empty"><i class="fas fa-receipt"></i><h2>Nenhum pedido ainda</h2></div>';
+                } else {
+                    lista.innerHTML = pedidos
+                        .map((pedido) => renderPedidoCard(pedido, paginaAtualPedidos === 1 && !pedidosAtuais.has(Number(pedido.id))))
+                        .join('');
+                }
 
-                container.innerHTML = html;
-                upgradeLegacyStatusControls(container);
-                if (novosPedidos) mostrarToast('Novo pedido recebido!');
-            } catch(e) { console.error(e); }
+                pedidosAtuais = idsPaginaAtual;
+                paginacao.innerHTML = renderPaginacao(meta);
+
+                if (houveNovoPedido) {
+                    mostrarToast('Novo pedido recebido!');
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         async function verificarEstoque() {
             try {
                 const data = await (await fetch('ajax_handler.php?action=alertas_estoque')).json();
                 const banner = document.getElementById('estoque-alert-banner');
-                const badge  = document.getElementById('estoque-alert-badge');
-                const total  = (data.zerados || 0) + (data.baixos || 0);
+                const badge = document.getElementById('estoque-alert-badge');
+                const total = (data.zerados || 0) + (data.baixos || 0);
 
                 if (total > 0) {
-                    badge.textContent   = total;
+                    badge.textContent = total;
                     badge.style.display = 'flex';
                     let itensHtml = '';
-                    (data.criticos || []).forEach(p => {
+                    (data.criticos || []).forEach((p) => {
                         const cor = p.estoque_atual === 0 ? '#dc2626' : '#d97706';
-                        itensHtml += `<span style="background:${cor}22;color:${cor};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;">${p.nome}: ${p.estoque_atual} un</span>`;
+                        itensHtml += `<span style="background:${cor}22;color:${cor};padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;">${escapeHtml(p.nome)}: ${Number(p.estoque_atual)} un</span>`;
                     });
                     banner.style.display = 'block';
                     banner.innerHTML = `
@@ -587,15 +696,15 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                             </div>
                         </div>`;
                 } else {
-                    badge.style.display  = 'none';
+                    badge.style.display = 'none';
                     banner.style.display = 'none';
                 }
-            } catch(e) {}
+            } catch (e) {}
         }
 
-        upgradeLegacyStatusControls();
         setInterval(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 30000);
-        setTimeout(() => { atualizarStats(); verificarEstoque(); }, 1000);
+        setTimeout(() => { atualizarPedidos(); atualizarStats(); verificarEstoque(); }, 1000);
     </script>
 </body>
 </html>
+

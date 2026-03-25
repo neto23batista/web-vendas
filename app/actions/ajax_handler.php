@@ -8,46 +8,79 @@ header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
- 
 const STATUS_VALIDOS = ['pendente', 'preparando', 'pronto', 'entregue', 'cancelado'];
+
+function carregar_itens_pedido_admin(mysqli $conn, int $pedidoId): array
+{
+    $stmt = $conn->prepare(
+        "SELECT pi.*, pr.nome as produto_nome
+         FROM pedido_itens pi
+         JOIN produtos pr ON pi.id_produto = pr.id
+         WHERE pi.id_pedido = ?"
+    );
+    $stmt->bind_param("i", $pedidoId);
+    $stmt->execute();
+    $itens = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return $itens;
+}
+
+function montar_resposta_pedidos_dono(mysqli $conn, int $pagina, int $porPagina): array
+{
+    $pagina = max(1, $pagina);
+    $porPagina = max(1, min($porPagina, 100));
+
+    $totalPedidos = (int)$conn->query("SELECT COUNT(*) AS t FROM pedidos")->fetch_assoc()['t'];
+    $totalPaginas = $totalPedidos > 0 ? (int)ceil($totalPedidos / $porPagina) : 0;
+    $paginaAjustada = $totalPaginas > 0 ? min($pagina, $totalPaginas) : 1;
+    $offset = ($paginaAjustada - 1) * $porPagina;
+
+    $stmt = $conn->prepare(
+        "SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
+         FROM pedidos p
+         JOIN usuarios u ON p.id_cliente = u.id
+         ORDER BY p.criado_em DESC
+         LIMIT ? OFFSET ?"
+    );
+    $stmt->bind_param("ii", $porPagina, $offset);
+    $stmt->execute();
+    $pedidos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    foreach ($pedidos as &$pedido) {
+        $pedido['itens'] = carregar_itens_pedido_admin($conn, (int)$pedido['id']);
+        $pedido['total_itens'] = count($pedido['itens']);
+    }
+    unset($pedido);
+
+    return [
+        'pedidos' => $pedidos,
+        'paginacao' => [
+            'pagina' => $paginaAjustada,
+            'por_pagina' => $porPagina,
+            'total_pedidos' => $totalPedidos,
+            'total_paginas' => $totalPaginas,
+        ],
+    ];
+}
 
 switch ($action) {
 
     case 'buscar_pedidos_dono':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
-         
-        $pedidos = $conn->query(
-            "SELECT p.*, u.nome as cliente_nome, u.telefone, u.endereco
-             FROM pedidos p
-             JOIN usuarios u ON p.id_cliente = u.id
-             ORDER BY p.criado_em DESC LIMIT 20"
-        )->fetch_all(MYSQLI_ASSOC);
-
-        foreach ($pedidos as &$pedido) {
-            $stmt = $conn->prepare(
-                "SELECT pi.*, pr.nome as produto_nome
-                 FROM pedido_itens pi
-                 JOIN produtos pr ON pi.id_produto = pr.id
-                 WHERE pi.id_pedido = ?"
-            );
-            $stmt->bind_param("i", $pedido['id']);
-            $stmt->execute();
-            $itens = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $pedido['itens'] = $itens;
-            $pedido['total_itens'] = count($itens);
-            $stmt->close();
-        }
-        unset($pedido);
-        echo json_encode(['pedidos' => $pedidos]);
+        $pagina = (int)($_GET['pagina'] ?? 1);
+        $porPagina = (int)($_GET['limite'] ?? 20);
+        echo json_encode(montar_resposta_pedidos_dono($conn, $pagina, $porPagina));
         break;
 
      
 
     case 'buscar_stats_dono':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         $stats = $conn->query(
             "SELECT COUNT(DISTINCT id) as total_pedidos,
@@ -75,7 +108,7 @@ switch ($action) {
 
     case 'atualizar_status':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         verificar_csrf();
 
@@ -95,115 +128,12 @@ switch ($action) {
         }
         break;
 
-         
-        if ($id_pedido <= 0 || !in_array($status, STATUS_VALIDOS, true)) {
-            echo json_encode(['erro' => 'Dados inválidos']); exit;
-        }
-
-         
-        $conn->begin_transaction();
-        $stmt = $conn->prepare("SELECT status FROM pedidos WHERE id = ? FOR UPDATE");
-        $stmt->bind_param("i", $id_pedido);
-        if (!$stmt->execute()) {
-            $stmt->close();
-            $conn->rollback();
-            echo json_encode(['erro' => 'Falha ao atualizar o pedido']); exit;
-        }
-        $pedido_atual = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if (!$pedido_atual) {
-            $conn->rollback();
-            echo json_encode(['erro' => 'Pedido não encontrado']); exit;
-        }
-
-         
-        $stmt = $conn->prepare("UPDATE pedidos SET status = ? WHERE id = ?");
-        $stmt->bind_param("si", $status, $id_pedido);
-        if (!$stmt->execute()) {
-            $stmt->close();
-            $conn->rollback();
-            echo json_encode(['erro' => 'Falha ao atualizar o pedido']); exit;
-        }
-        $stmt->close();
-
-         
-        if ($status === 'entregue' && $pedido_atual && $pedido_atual['status'] !== 'entregue') {
-            $stmt_itens = $conn->prepare(
-                "SELECT id_produto, quantidade FROM pedido_itens WHERE id_pedido = ?"
-            );
-            $stmt_itens->bind_param("i", $id_pedido);
-            $stmt_itens->execute();
-            $itens_pedido = $stmt_itens->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt_itens->close();
-
-            $id_admin = $_SESSION['id_usuario'] ?? null;
-
-            foreach ($itens_pedido as $it) {
-                $id_prod = (int)$it['id_produto'];
-                $qtd     = (int)$it['quantidade'];
-
-                $stmt_prod = $conn->prepare(
-                    "SELECT estoque_atual FROM produtos WHERE id = ? FOR UPDATE"
-                );
-                $stmt_prod->bind_param("i", $id_prod);
-                $stmt_prod->execute();
-                $prod = $stmt_prod->get_result()->fetch_assoc();
-                $stmt_prod->close();
-
-                if ($prod) {
-                    $antes = (int)$prod['estoque_atual'];
-                    if ($antes < $qtd) {
-                        $conn->rollback();
-                        echo json_encode(['erro' => "Estoque insuficiente para o produto #$id_prod"]); exit;
-                    }
-                    $depois = $antes - $qtd;
-
-                    $stmt_up = $conn->prepare(
-                        "UPDATE produtos SET estoque_atual = ?, disponivel = ? WHERE id = ?"
-                    );
-                    $disponivel = $depois > 0 ? 1 : 0;
-                    $stmt_up->bind_param("iii", $depois, $disponivel, $id_prod);
-                    if (!$stmt_up->execute()) {
-                        $stmt_up->close();
-                        $conn->rollback();
-                        echo json_encode(['erro' => 'Falha ao baixar o estoque']); exit;
-                    }
-                    $stmt_up->close();
-
-                     
-                    $motivo    = "Baixa automática – Pedido #$id_pedido";
-                    $tipo_baixa = 'saida';
-                    $stmt_mov = $conn->prepare(
-                        "INSERT INTO movimentacoes_estoque
-                         (id_produto, tipo, quantidade, estoque_anterior, estoque_novo, motivo, id_pedido, id_usuario)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                    );
-                    $stmt_mov->bind_param(
-                        "isiissii",
-                        $id_prod, $tipo_baixa, $qtd,
-                        $antes, $depois, $motivo,
-                        $id_pedido, $id_admin
-                    );
-                    if (!$stmt_mov->execute()) {
-                        $stmt_mov->close();
-                        $conn->rollback();
-                        echo json_encode(['erro' => 'Falha ao registrar a movimentação']); exit;
-                    }
-                    $stmt_mov->close();
-                }
-            }
-        }
-
-        $conn->commit();
-        echo json_encode(['sucesso' => true, 'mensagem' => 'Status atualizado!']);
-        break;
 
      
 
     case 'buscar_pedidos_cliente':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         $id_cliente = (int)$_SESSION['id_usuario'];
 
@@ -228,7 +158,7 @@ switch ($action) {
 
     case 'buscar_status_pedido':
         if (!isset($_SESSION['usuario'])) {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         $id = (int)($_GET['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['pedido' => null]); exit; }
@@ -256,7 +186,7 @@ switch ($action) {
 
     case 'pedir_conta':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         verificar_csrf();
         $id_pedido  = (int)($_POST['id_pedido'] ?? 0);
@@ -272,7 +202,7 @@ switch ($action) {
         $stmt->close();
 
         if (!$pedido) {
-            echo json_encode(['erro' => 'Pedido não encontrado ou não está pronto']); exit;
+            echo json_encode(['erro' => 'Pedido nÃ£o encontrado ou nÃ£o estÃ¡ pronto']); exit;
         }
 
         $stmt = $conn->prepare(
@@ -308,7 +238,7 @@ switch ($action) {
 
     case 'atualizar_quantidade_carrinho':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         verificar_csrf();
         $id_cliente  = (int)$_SESSION['id_usuario'];
@@ -358,7 +288,7 @@ switch ($action) {
 
     case 'buscar_carrinho':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'cliente') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         $id_cliente = (int)$_SESSION['id_usuario'];
 
@@ -392,7 +322,7 @@ switch ($action) {
      
     case 'alertas_estoque':
         if (!isset($_SESSION['usuario']) || $_SESSION['tipo'] != 'dono') {
-            echo json_encode(['erro' => 'Não autorizado']); exit;
+            echo json_encode(['erro' => 'NÃ£o autorizado']); exit;
         }
         $zerados = $conn->query(
             "SELECT COUNT(*) as t FROM produtos WHERE estoque_atual = 0"
@@ -419,5 +349,5 @@ switch ($action) {
      
 
     default:
-        echo json_encode(['erro' => 'Ação não reconhecida']);
+        echo json_encode(['erro' => 'AÃ§Ã£o nÃ£o reconhecida']);
 }

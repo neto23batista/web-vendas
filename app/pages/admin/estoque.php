@@ -45,18 +45,6 @@ if (isset($_POST['acao_entrada'])) {
         redirecionar('estoque.php', $e->getMessage(), 'erro');
     }
 
-    $id = (int)$_POST['id_produto']; $qtd = max(1,(int)$_POST['quantidade']);
-    $motivo = sanitizar_texto($_POST['motivo'] ?? 'Entrada de estoque');
-    $stmt = $conn->prepare("SELECT estoque_atual FROM produtos WHERE id=?");
-    $stmt->bind_param("i",$id); $stmt->execute(); $prod=$stmt->get_result()->fetch_assoc(); $stmt->close();
-    if ($prod) {
-        $antes=$prod['estoque_atual']; $depois=$antes+$qtd; $tipo='entrada';
-        $stmt=$conn->prepare("UPDATE produtos SET estoque_atual=? WHERE id=?"); $stmt->bind_param("ii",$depois,$id); $stmt->execute(); $stmt->close();
-        $stmt=$conn->prepare("UPDATE produtos SET disponivel=1 WHERE id=? AND disponivel=0"); $stmt->bind_param("i",$id); $stmt->execute(); $stmt->close();
-        $stmt=$conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi",$id,$tipo,$qtd,$antes,$depois,$motivo,$id_admin); $stmt->execute(); $stmt->close();
-        redirecionar('estoque.php',"✅ Entrada de $qtd unidade(s) registrada!");
-    }
 }
 
  
@@ -71,18 +59,6 @@ if (isset($_POST['acao_saida'])) {
         redirecionar('estoque.php', $e->getMessage(), 'erro');
     }
 
-    $id = (int)$_POST['id_produto']; $qtd = max(1,(int)$_POST['quantidade']);
-    $motivo = sanitizar_texto($_POST['motivo'] ?? 'Saída de estoque');
-    $stmt=$conn->prepare("SELECT estoque_atual FROM produtos WHERE id=?"); $stmt->bind_param("i",$id); $stmt->execute();
-    $prod=$stmt->get_result()->fetch_assoc(); $stmt->close();
-    if ($prod) {
-        $antes=$prod['estoque_atual']; $depois=max(0,$antes-$qtd); $tipo='saida';
-        $stmt=$conn->prepare("UPDATE produtos SET estoque_atual=? WHERE id=?"); $stmt->bind_param("ii",$depois,$id); $stmt->execute(); $stmt->close();
-        if ($depois===0) { $stmt=$conn->prepare("UPDATE produtos SET disponivel=0 WHERE id=?"); $stmt->bind_param("i",$id); $stmt->execute(); $stmt->close(); }
-        $stmt=$conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi",$id,$tipo,$qtd,$antes,$depois,$motivo,$id_admin); $stmt->execute(); $stmt->close();
-        redirecionar('estoque.php',"✅ Saída de $qtd unidade(s) registrada!");
-    }
 }
 
  
@@ -97,19 +73,6 @@ if (isset($_POST['acao_ajuste'])) {
         redirecionar('estoque.php', $e->getMessage(), 'erro');
     }
 
-    $id=(int)$_POST['id_produto']; $novo=max(0,(int)$_POST['novo_estoque']);
-    $motivo=sanitizar_texto($_POST['motivo']??'Ajuste de inventário');
-    $stmt=$conn->prepare("SELECT estoque_atual FROM produtos WHERE id=?"); $stmt->bind_param("i",$id); $stmt->execute();
-    $prod=$stmt->get_result()->fetch_assoc(); $stmt->close();
-    if ($prod) {
-        $antes=$prod['estoque_atual']; $diff=abs($novo-$antes); $tipo='ajuste';
-        $stmt=$conn->prepare("UPDATE produtos SET estoque_atual=? WHERE id=?"); $stmt->bind_param("ii",$novo,$id); $stmt->execute(); $stmt->close();
-        if ($novo===0){$stmt=$conn->prepare("UPDATE produtos SET disponivel=0 WHERE id=?");$stmt->bind_param("i",$id);$stmt->execute();$stmt->close();}
-        elseif($antes===0&&$novo>0){$stmt=$conn->prepare("UPDATE produtos SET disponivel=1 WHERE id=?");$stmt->bind_param("i",$id);$stmt->execute();$stmt->close();}
-        $stmt=$conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiissi",$id,$tipo,$diff,$antes,$novo,$motivo,$id_admin); $stmt->execute(); $stmt->close();
-        redirecionar('estoque.php',"✅ Estoque ajustado para $novo unidade(s)!");
-    }
 }
 
  
@@ -126,18 +89,6 @@ if (isset($_POST['acao_transferencia'])) {
         redirecionar('estoque.php', $e->getMessage(), 'erro');
     }
 
-    $id=(int)$_POST['id_produto']; $qtd=max(1,(int)$_POST['quantidade']);
-    $orig=sanitizar_texto($_POST['localizacao_origem']??''); $dest=sanitizar_texto($_POST['localizacao_destino']??'');
-    $motivo=sanitizar_texto($_POST['motivo']??"Transferência: $orig → $dest");
-    $stmt=$conn->prepare("SELECT estoque_atual FROM produtos WHERE id=?"); $stmt->bind_param("i",$id); $stmt->execute();
-    $prod=$stmt->get_result()->fetch_assoc(); $stmt->close();
-    if ($prod) {
-        $antes=(int)$prod['estoque_atual']; $tipo='transferencia_out';
-        $stmt=$conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo,id_usuario,localizacao_origem,localizacao_destino) VALUES (?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("isiississ",$id,$tipo,$qtd,$antes,$antes,$motivo,$id_admin,$orig,$dest); $stmt->execute(); $stmt->close();
-        $stmt=$conn->prepare("UPDATE produtos SET localizacao=? WHERE id=?"); $stmt->bind_param("si",$dest,$id); $stmt->execute(); $stmt->close();
-        redirecionar('estoque.php',"✅ Transferência: $orig → $dest!");
-    }
 }
 
  
@@ -154,11 +105,6 @@ if (isset($_POST['acao_limites'])) {
         redirecionar('estoque.php', $e->getMessage(), 'erro');
     }
 
-    $id=(int)$_POST['id_produto']; $min=max(0,(int)$_POST['estoque_minimo']); $max=max(1,(int)$_POST['estoque_maximo']);
-    $unidade=sanitizar_texto($_POST['unidade']??'un'); $loc=sanitizar_texto($_POST['localizacao']??'');
-    $stmt=$conn->prepare("UPDATE produtos SET estoque_minimo=?,estoque_maximo=?,unidade=?,localizacao=? WHERE id=?");
-    $stmt->bind_param("iissi",$min,$max,$unidade,$loc,$id); $stmt->execute(); $stmt->close();
-    redirecionar('estoque.php',"✅ Configurações atualizadas!");
 }
 
  
@@ -203,7 +149,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Controle de Estoque – FarmaVida</title>
+    <title>Controle de Estoque â€“ FarmaVida</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=1774207549">
     <style>
@@ -255,9 +201,9 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 <div class="alert alert-warning" style="margin-bottom:24px;">
     <i class="fas fa-triangle-exclamation"></i>
     <div>
-        <strong>Estoque crítico: </strong>
-        <?php if($stats['zerados']>0): ?><strong><?= $stats['zerados'] ?></strong> produto(s) zerado(s) &nbsp;·&nbsp;<?php endif; ?>
-        <?php if($stats['baixos']>0): ?><strong><?= $stats['baixos'] ?></strong> abaixo do mínimo<?php endif; ?>
+        <strong>Estoque crÃ­tico: </strong>
+        <?php if($stats['zerados']>0): ?><strong><?= $stats['zerados'] ?></strong> produto(s) zerado(s) &nbsp;Â·&nbsp;<?php endif; ?>
+        <?php if($stats['baixos']>0): ?><strong><?= $stats['baixos'] ?></strong> abaixo do mÃ­nimo<?php endif; ?>
     </div>
     <a href="estoque.php?alerta=zerado" class="btn btn-warning" style="margin-left:auto;padding:6px 14px;font-size:12px;">Ver</a>
 </div>
@@ -266,9 +212,9 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px;">
     <a href="estoque.php" class="est-stat-card"><div class="est-stat-num" style="color:var(--text);"><?= $stats['total'] ?></div><div class="est-stat-label">Total</div></a>
-    <a href="estoque.php?alerta=ok"     class="est-stat-card"><div class="est-stat-num" style="color:var(--primary);"><?= $stats['normais'] ?></div><div class="est-stat-label">🟢 Normal</div></a>
-    <a href="estoque.php?alerta=baixo"  class="est-stat-card"><div class="est-stat-num" style="color:var(--warning);"><?= $stats['baixos'] ?></div><div class="est-stat-label">🟡 Baixo</div></a>
-    <a href="estoque.php?alerta=zerado" class="est-stat-card"><div class="est-stat-num" style="color:var(--danger);"><?= $stats['zerados'] ?></div><div class="est-stat-label">🔴 Zerado</div></a>
+    <a href="estoque.php?alerta=ok"     class="est-stat-card"><div class="est-stat-num" style="color:var(--primary);"><?= $stats['normais'] ?></div><div class="est-stat-label">ðŸŸ¢ Normal</div></a>
+    <a href="estoque.php?alerta=baixo"  class="est-stat-card"><div class="est-stat-num" style="color:var(--warning);"><?= $stats['baixos'] ?></div><div class="est-stat-label">ðŸŸ¡ Baixo</div></a>
+    <a href="estoque.php?alerta=zerado" class="est-stat-card"><div class="est-stat-num" style="color:var(--danger);"><?= $stats['zerados'] ?></div><div class="est-stat-label">ðŸ”´ Zerado</div></a>
     <div class="est-stat-card" style="cursor:default;"><div class="est-stat-num" style="color:var(--secondary);"><?= number_format($stats['total_unidades'],0,'.','.') ?></div><div class="est-stat-label">Unidades</div></div>
 </div>
 
@@ -276,23 +222,23 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 <div class="card" style="padding:18px 22px;margin-bottom:20px;">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <form method="GET" style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
-            <input type="text" name="busca" placeholder="🔍 Buscar produto..." value="<?= htmlspecialchars($busca) ?>" style="flex:1;min-width:160px;">
+            <input type="text" name="busca" placeholder="ðŸ” Buscar produto..." value="<?= htmlspecialchars($busca) ?>" style="flex:1;min-width:160px;">
             <select name="categoria">
                 <option value="">Todas categorias</option>
                 <?php foreach($categorias as $c): ?><option value="<?= htmlspecialchars($c['categoria']) ?>" <?= $filtro_cat===$c['categoria']?'selected':'' ?>><?= htmlspecialchars($c['categoria']) ?></option><?php endforeach; ?>
             </select>
             <select name="alerta">
                 <option value="">Todos status</option>
-                <option value="ok"     <?= $filtro_alerta==='ok'    ?'selected':'' ?>>🟢 Normal</option>
-                <option value="baixo"  <?= $filtro_alerta==='baixo' ?'selected':'' ?>>🟡 Baixo</option>
-                <option value="zerado" <?= $filtro_alerta==='zerado'?'selected':'' ?>>🔴 Zerado</option>
+                <option value="ok"     <?= $filtro_alerta==='ok'    ?'selected':'' ?>>ðŸŸ¢ Normal</option>
+                <option value="baixo"  <?= $filtro_alerta==='baixo' ?'selected':'' ?>>ðŸŸ¡ Baixo</option>
+                <option value="zerado" <?= $filtro_alerta==='zerado'?'selected':'' ?>>ðŸ”´ Zerado</option>
             </select>
             <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
             <a href="estoque.php" class="btn btn-secondary"><i class="fas fa-sync"></i></a>
         </form>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button onclick="abrirModal('modal-entrada')" class="btn btn-success"><i class="fas fa-arrow-down"></i> Entrada</button>
-            <button onclick="abrirModal('modal-saida')"   class="btn btn-danger" ><i class="fas fa-arrow-up"></i> Saída</button>
+            <button onclick="abrirModal('modal-saida')"   class="btn btn-danger" ><i class="fas fa-arrow-up"></i> SaÃ­da</button>
             <button onclick="abrirModal('modal-ajuste')"  class="btn btn-info"   ><i class="fas fa-sliders"></i> Ajuste</button>
             <button onclick="abrirModal('modal-transf')"  class="btn btn-warning"><i class="fas fa-arrows-left-right"></i> Transf.</button>
         </div>
@@ -306,7 +252,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
     </div>
     <div style="overflow-x:auto;">
         <table class="est-table">
-            <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center;">Atual</th><th style="text-align:center;">Mín.</th><th>Unid.</th><th>Local.</th><th>Status</th><th>Barra</th><th style="text-align:center;">Ações</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center;">Atual</th><th style="text-align:center;">MÃ­n.</th><th>Unid.</th><th>Local.</th><th>Status</th><th>Barra</th><th style="text-align:center;">AÃ§Ãµes</th></tr></thead>
             <tbody>
             <?php foreach($produtos as $p):
                 $s=(int)$p['estoque_atual'];$min=(int)$p['estoque_minimo'];$max=max(1,(int)$p['estoque_maximo']);
@@ -321,7 +267,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
                 <td style="text-align:center;"><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:800;color:<?= $cor ?>;"><?= $s ?></span></td>
                 <td style="text-align:center;"><?= $min ?></td>
                 <td style="font-size:12px;"><?= htmlspecialchars($p['unidade']??'un') ?></td>
-                <td style="font-size:12px;color:var(--text3);"><?= htmlspecialchars($p['localizacao']??'—') ?></td>
+                <td style="font-size:12px;color:var(--text3);"><?= htmlspecialchars($p['localizacao']??'â€”') ?></td>
                 <td><span class="est-badge <?= $badge ?>"><?= $lbl ?></span></td>
                 <td><div class="stock-bar-wrap"><div class="stock-bar"><div class="stock-bar-fill" style="width:<?= $pct ?>%;background:<?= $cor ?>;"></div></div><span style="font-size:10px;color:var(--text3);"><?= $pct ?>%</span></div></td>
                 <td style="text-align:center;white-space:nowrap;">
@@ -341,32 +287,32 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 
 <div class="card" id="historico">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <h2 style="margin:0;"><i class="fas fa-clock-rotate-left"></i> Histórico</h2>
+        <h2 style="margin:0;"><i class="fas fa-clock-rotate-left"></i> HistÃ³rico</h2>
         <span style="font-size:12px;color:var(--text3);padding:4px 12px;background:var(--surface2);border-radius:var(--radius-full);border:1px solid var(--border);">
             <i class="fas fa-calendar-xmark"></i> Mantido por 30 dias
         </span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
         <a href="estoque.php#historico"                            class="mov-tab <?= !$fmtipo?'active':'' ?>">Todos</a>
-        <a href="estoque.php?mov_tipo=entrada#historico"           class="mov-tab <?= $fmtipo==='entrada'?'active':'' ?>">↓ Entradas</a>
-        <a href="estoque.php?mov_tipo=saida#historico"             class="mov-tab <?= $fmtipo==='saida'?'active':'' ?>">↑ Saídas</a>
-        <a href="estoque.php?mov_tipo=ajuste#historico"            class="mov-tab <?= $fmtipo==='ajuste'?'active':'' ?>">⚖ Ajustes</a>
-        <a href="estoque.php?mov_tipo=transferencia_out#historico" class="mov-tab <?= $fmtipo==='transferencia_out'?'active':'' ?>">⇄ Transf.</a>
+        <a href="estoque.php?mov_tipo=entrada#historico"           class="mov-tab <?= $fmtipo==='entrada'?'active':'' ?>">â†“ Entradas</a>
+        <a href="estoque.php?mov_tipo=saida#historico"             class="mov-tab <?= $fmtipo==='saida'?'active':'' ?>">â†‘ SaÃ­das</a>
+        <a href="estoque.php?mov_tipo=ajuste#historico"            class="mov-tab <?= $fmtipo==='ajuste'?'active':'' ?>">âš– Ajustes</a>
+        <a href="estoque.php?mov_tipo=transferencia_out#historico" class="mov-tab <?= $fmtipo==='transferencia_out'?'active':'' ?>">â‡„ Transf.</a>
         <?php if($fmprod): ?>
         <span style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface2);border-radius:var(--radius-full);">
-            <?= htmlspecialchars($nome_produto_filtro) ?> <a href="estoque.php#historico" style="color:var(--danger);">✕</a>
+            <?= htmlspecialchars($nome_produto_filtro) ?> <a href="estoque.php#historico" style="color:var(--danger);">âœ•</a>
         </span>
         <?php endif; ?>
     </div>
     <?php if(empty($movimentacoes)): ?>
-        <div class="empty" style="padding:40px;"><i class="fas fa-inbox"></i><h2>Nenhuma movimentação</h2></div>
+        <div class="empty" style="padding:40px;"><i class="fas fa-inbox"></i><h2>Nenhuma movimentaÃ§Ã£o</h2></div>
     <?php else: ?>
     <div style="overflow-x:auto;">
         <table class="est-table">
-            <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th style="text-align:center;">Qtd</th><th style="text-align:center;">Antes</th><th style="text-align:center;">Depois</th><th>Motivo</th><th>Usuário</th><th>Pedido</th></tr></thead>
+            <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th style="text-align:center;">Qtd</th><th style="text-align:center;">Antes</th><th style="text-align:center;">Depois</th><th>Motivo</th><th>UsuÃ¡rio</th><th>Pedido</th></tr></thead>
             <tbody>
             <?php
-            $tlabels=['entrada'=>'Entrada','saida'=>'Saída','ajuste'=>'Ajuste','transferencia_out'=>'Transf.','transferencia_in'=>'Chegada'];
+            $tlabels=['entrada'=>'Entrada','saida'=>'SaÃ­da','ajuste'=>'Ajuste','transferencia_out'=>'Transf.','transferencia_in'=>'Chegada'];
             foreach($movimentacoes as $m): ?>
             <tr>
                 <td style="white-space:nowrap;font-size:12px;"><?= date('d/m/Y H:i',strtotime($m['criado_em'])) ?></td>
@@ -375,9 +321,9 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
                 <td style="text-align:center;font-weight:800;font-size:16px;color:var(--text);"><?= $m['quantidade'] ?> <span style="font-size:10px;color:var(--text3);"><?= htmlspecialchars($m['unidade']) ?></span></td>
                 <td style="text-align:center;"><?= $m['estoque_anterior'] ?></td>
                 <td style="text-align:center;font-weight:700;color:<?= $m['estoque_novo']>$m['estoque_anterior']?'var(--primary)':($m['estoque_novo']<$m['estoque_anterior']?'var(--danger)':'var(--text3)') ?>;"><?= $m['estoque_novo'] ?></td>
-                <td style="font-size:12px;max-width:180px;"><?= htmlspecialchars($m['motivo']??'—') ?><?php if($m['localizacao_origem']): ?><br><span style="color:var(--secondary);font-size:11px;"><?= htmlspecialchars($m['localizacao_origem']) ?> → <?= htmlspecialchars($m['localizacao_destino']) ?></span><?php endif; ?></td>
+                <td style="font-size:12px;max-width:180px;"><?= htmlspecialchars($m['motivo']??'â€”') ?><?php if($m['localizacao_origem']): ?><br><span style="color:var(--secondary);font-size:11px;"><?= htmlspecialchars($m['localizacao_origem']) ?> â†’ <?= htmlspecialchars($m['localizacao_destino']) ?></span><?php endif; ?></td>
                 <td style="font-size:12px;color:var(--text3);"><?= htmlspecialchars($m['usuario_nome']??'Sistema') ?></td>
-                <td style="font-size:12px;"><?php if($m['id_pedido']): ?><a href="imprimir_pedido.php?id=<?= (int)$m['id_pedido'] ?>" target="_blank" style="color:var(--primary);font-weight:700;">#<?= (int)$m['id_pedido'] ?></a><?php else: ?><span style="color:var(--border2);">—</span><?php endif; ?></td>
+                <td style="font-size:12px;"><?php if($m['id_pedido']): ?><a href="imprimir_pedido.php?id=<?= (int)$m['id_pedido'] ?>" target="_blank" style="color:var(--primary);font-weight:700;">#<?= (int)$m['id_pedido'] ?></a><?php else: ?><span style="color:var(--border2);">â€”</span><?php endif; ?></td>
             </tr>
             <?php endforeach; ?>
             </tbody>
@@ -405,12 +351,12 @@ foreach($produtos_sel as $ps) $sel_opts.='<option value="'.(int)$ps['id'].'" dat
 
 <div class="modal-overlay" id="modal-saida"><div class="modal-box">
     <button class="modal-close" onclick="fecharModal('modal-saida')"><i class="fas fa-xmark"></i></button>
-    <h3 style="color:var(--danger);font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrow-up"></i> Registrar Saída</h3>
+    <h3 style="color:var(--danger);font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrow-up"></i> Registrar SaÃ­da</h3>
     <form method="POST"><?= campo_csrf() ?>
         <div class="form-group"><label>Produto *</label><select name="id_produto" id="sel-saida" required><option value="">Selecione...</option><?= $sel_opts ?></select></div>
         <div class="form-group"><label>Quantidade *</label><input type="number" name="quantidade" min="1" value="1" required></div>
         <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Ex: Vencimento, perda..."></div>
-        <button type="submit" name="acao_saida" class="btn btn-danger btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Confirmar Saída</button>
+        <button type="submit" name="acao_saida" class="btn btn-danger btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Confirmar SaÃ­da</button>
     </form>
 </div></div>
 
@@ -420,24 +366,24 @@ foreach($produtos_sel as $ps) $sel_opts.='<option value="'.(int)$ps['id'].'" dat
     <p id="ajuste-nome" style="color:var(--text3);font-size:13px;margin:-10px 0 16px;"></p>
     <form method="POST"><?= campo_csrf() ?><input type="hidden" name="id_produto" id="ajuste-id">
         <div style="display:flex;gap:6px;margin-bottom:18px;">
-            <button type="button" onclick="ajusteTab('inv')" id="tab-inv" class="btn btn-primary" style="padding:7px 14px;font-size:12px;">📦 Inventário</button>
-            <button type="button" onclick="ajusteTab('cfg')" id="tab-cfg" class="btn btn-secondary" style="padding:7px 14px;font-size:12px;">⚙️ Config</button>
+            <button type="button" onclick="ajusteTab('inv')" id="tab-inv" class="btn btn-primary" style="padding:7px 14px;font-size:12px;">ðŸ“¦ InventÃ¡rio</button>
+            <button type="button" onclick="ajusteTab('cfg')" id="tab-cfg" class="btn btn-secondary" style="padding:7px 14px;font-size:12px;">âš™ï¸ Config</button>
         </div>
         <div id="tab-inv-body">
             <div class="form-group"><label>Novo Estoque *</label><input type="number" name="novo_estoque" id="ajuste-estoque" min="0" required></div>
-            <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Contagem física..."></div>
+            <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Contagem fÃ­sica..."></div>
             <button type="submit" name="acao_ajuste" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Salvar Ajuste</button>
         </div>
         <div id="tab-cfg-body" style="display:none;">
             <div class="form-grid">
-                <div class="form-group"><label>Estoque Mínimo</label><input type="number" name="estoque_minimo" id="cfg-min" min="0" required></div>
-                <div class="form-group"><label>Estoque Máximo</label><input type="number" name="estoque_maximo" id="cfg-max" min="1" required></div>
+                <div class="form-group"><label>Estoque MÃ­nimo</label><input type="number" name="estoque_minimo" id="cfg-min" min="0" required></div>
+                <div class="form-group"><label>Estoque MÃ¡ximo</label><input type="number" name="estoque_maximo" id="cfg-max" min="1" required></div>
             </div>
             <div class="form-grid">
                 <div class="form-group"><label>Unidade</label>
                     <select name="unidade" id="cfg-und"><option value="un">un</option><option value="cx">cx</option><option value="fr">fr</option><option value="bl">bl</option><option value="cp">cp</option><option value="ml">ml</option><option value="g">g</option><option value="kg">kg</option></select>
                 </div>
-                <div class="form-group"><label>Localização</label><input type="text" name="localizacao" id="cfg-loc" placeholder="Ex: Prateleira A3"></div>
+                <div class="form-group"><label>LocalizaÃ§Ã£o</label><input type="text" name="localizacao" id="cfg-loc" placeholder="Ex: Prateleira A3"></div>
             </div>
             <button type="submit" name="acao_limites" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-save"></i> Salvar Config</button>
         </div>
@@ -446,17 +392,17 @@ foreach($produtos_sel as $ps) $sel_opts.='<option value="'.(int)$ps['id'].'" dat
 
 <div class="modal-overlay" id="modal-transf"><div class="modal-box">
     <button class="modal-close" onclick="fecharModal('modal-transf')"><i class="fas fa-xmark"></i></button>
-    <h3 style="color:#a855f7;font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrows-left-right"></i> Transferência</h3>
+    <h3 style="color:#a855f7;font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrows-left-right"></i> TransferÃªncia</h3>
     <form method="POST"><?= campo_csrf() ?>
         <div class="form-group"><label>Produto *</label><select name="id_produto" id="sel-transf" required><option value="">Selecione...</option><?= $sel_opts ?></select></div>
         <div class="form-group"><label>Quantidade *</label><input type="number" name="quantidade" min="1" value="1" required></div>
         <div class="form-grid">
-            <div class="form-group"><label>Origem</label><input type="text" name="localizacao_origem" id="transf-orig" required placeholder="Ex: Depósito"></div>
+            <div class="form-group"><label>Origem</label><input type="text" name="localizacao_origem" id="transf-orig" required placeholder="Ex: DepÃ³sito"></div>
             <div class="form-group"><label>Destino</label><input type="text" name="localizacao_destino" required placeholder="Ex: Prateleira B2"></div>
         </div>
-        <div class="form-group"><label>Observação</label><input type="text" name="motivo" placeholder="Motivo..."></div>
+        <div class="form-group"><label>ObservaÃ§Ã£o</label><input type="text" name="motivo" placeholder="Motivo..."></div>
         <button type="submit" name="acao_transferencia" class="btn btn-lg" style="width:100%;justify-content:center;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;">
-            <i class="fas fa-check"></i> Registrar Transferência
+            <i class="fas fa-check"></i> Registrar TransferÃªncia
         </button>
     </form>
 </div></div>

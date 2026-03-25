@@ -32,7 +32,7 @@ function api_exigir_permissao(array $apiKey, array $permissoesAceitas): void {
     }
 
     http_response_code(403);
-    echo json_encode(['erro' => 'Permissão insuficiente', 'code' => 403]);
+    echo json_encode(['erro' => 'PermissÃ£o insuficiente', 'code' => 403]);
     exit;
 }
 
@@ -56,7 +56,7 @@ if ($is_api) {
         http_response_code(503);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
-            'erro' => 'Existem migrações pendentes para o módulo ERP. Execute-as no painel administrativo.',
+            'erro' => 'Existem migraÃ§Ãµes pendentes para o mÃ³dulo ERP. Execute-as no painel administrativo.',
             'code' => 503,
         ]);
         exit;
@@ -75,8 +75,7 @@ if ($is_api) {
     $api_key = trim((string)($_SERVER['HTTP_X_API_KEY'] ?? ''));
     if ($api_key === '') { http_response_code(401); echo json_encode(['erro'=>'Envie a API key no header X-Api-Key','code'=>401]); exit; }
     $api_client = validar_api_key($api_key, $conn);
-    if (!$api_client) { http_response_code(401); echo json_encode(['erro'=>'API key inválida','code'=>401]); exit; }
-    if (!validar_api_key($api_key, $conn)) { http_response_code(401); echo json_encode(['erro'=>'API key inválida','code'=>401]); exit; }
+    if (!$api_client) { http_response_code(401); echo json_encode(['erro'=>'API key invÃ¡lida','code'=>401]); exit; }
 
     $stmt = $conn->prepare("UPDATE erp_api_keys SET ultimo_acesso = NOW() WHERE id = ?");
     $stmt->bind_param("i", $api_client['id']); $stmt->execute(); $stmt->close();
@@ -173,16 +172,6 @@ if ($is_api) {
                 echo json_encode(['erro' => 'Falha interna ao atualizar estoque.']);
             }
             break;
-            if (!$id_produto || $qtd <= 0) { http_response_code(400); echo json_encode(['erro'=>'id_produto e quantidade são obrigatórios']); break; }
-            $st=$conn->prepare("SELECT estoque_atual FROM produtos WHERE id=?"); $st->bind_param("i",$id_produto); $st->execute();
-            $prod=$st->get_result()->fetch_assoc(); $st->close();
-            if (!$prod) { http_response_code(404); echo json_encode(['erro'=>'Produto não encontrado']); break; }
-            $antes=(int)$prod['estoque_atual']; $depois=$antes+$qtd;
-            $st=$conn->prepare("UPDATE produtos SET estoque_atual=? WHERE id=?"); $st->bind_param("ii",$depois,$id_produto); $st->execute(); $st->close();
-            $tipo_m='entrada';
-            $st=$conn->prepare("INSERT INTO movimentacoes_estoque (id_produto,tipo,quantidade,estoque_anterior,estoque_novo,motivo) VALUES (?,?,?,?,?,?)");
-            $st->bind_param("isiiss",$id_produto,$tipo_m,$qtd,$antes,$depois,$motivo); $st->execute(); $st->close();
-            echo json_encode(['sucesso'=>true,'estoque_anterior'=>$antes,'estoque_novo'=>$depois]); break;
 
         case 'POST:produtos':
             api_exigir_permissao($api_client, ['write']);
@@ -191,7 +180,7 @@ if ($is_api) {
             $categoria = substr(strip_tags($body['categoria'] ?? ''), 0, 60);
             $descricao = substr(strip_tags($body['descricao'] ?? ''), 0, 1000);
             $estoque   = (int)($body['estoque_inicial'] ?? 0);
-            if (!$nome || $preco <= 0) { http_response_code(400); echo json_encode(['erro'=>'nome e preco são obrigatórios']); break; }
+            if (!$nome || $preco <= 0) { http_response_code(400); echo json_encode(['erro'=>'nome e preco sÃ£o obrigatÃ³rios']); break; }
             $st=$conn->prepare("INSERT INTO produtos (nome,descricao,preco,categoria,estoque_atual) VALUES (?,?,?,?,?)");
             $st->bind_param("ssdsi",$nome,$descricao,$preco,$categoria,$estoque); $st->execute();
             echo json_encode(['sucesso'=>true,'id'=>$conn->insert_id]); $st->close(); break;
@@ -217,13 +206,10 @@ if ($is_api) {
                 echo json_encode(['erro' => 'Falha interna ao atualizar pedido.']);
             }
             break;
-            if (!$id_pedido || !in_array($status, $status_validos, true)) { http_response_code(400); echo json_encode(['erro'=>'id_pedido e status válido são obrigatórios']); break; }
-            $st=$conn->prepare("UPDATE pedidos SET status=? WHERE id=?"); $st->bind_param("si",$status,$id_pedido); $st->execute(); $st->close();
-            echo json_encode(['sucesso'=>true,'id'=>$id_pedido,'status'=>$status]); break;
 
         default:
             http_response_code(404);
-            echo json_encode(['erro'=>"Endpoint não encontrado: $method:$endpoint",'endpoints'=>['GET produtos','GET pedidos','GET estoque','GET clientes','GET financeiro','POST produtos','POST estoque/entrada','PUT pedidos/status']]);
+            echo json_encode(['erro'=>"Endpoint nÃ£o encontrado: $method:$endpoint",'endpoints'=>['GET produtos','GET pedidos','GET estoque','GET clientes','GET financeiro','POST produtos','POST estoque/entrada','PUT pedidos/status']]);
     }
     exit;
 }
@@ -234,7 +220,7 @@ verificar_login('dono');
 if (schema_componentes_pendentes($conn, $componentes_erp)) {
     redirecionar(
         'migracoes.php',
-        'Existem migrações pendentes para o módulo ERP. Execute-as antes de usar esta tela.',
+        'Existem migraÃ§Ãµes pendentes para o mÃ³dulo ERP. Execute-as antes de usar esta tela.',
         'erro'
     );
 }
@@ -247,25 +233,25 @@ if (isset($_POST['nova_key'])) {
     $stmt  = $conn->prepare("INSERT INTO erp_api_keys (nome, api_key, permissoes) VALUES (?,?,?)");
     $stmt->bind_param("sss", $nome, $key, $perms); $stmt->execute(); $stmt->close();
     $_SESSION['nova_key'] = $key;
-    redirecionar('erp.php', "✅ API Key gerada com sucesso!");
+    redirecionar('erp.php', "âœ… API Key gerada com sucesso!");
 }
 if (isset($_POST['revogar_key'])) {
     verificar_csrf();
     $id = (int)($_POST['id_key'] ?? 0);
     $stmt = $conn->prepare("UPDATE erp_api_keys SET ativa = 0 WHERE id = ?");
     $stmt->bind_param("i", $id); $stmt->execute(); $stmt->close();
-    redirecionar('erp.php', "🔒 API Key revogada!");
+    redirecionar('erp.php', "ðŸ”’ API Key revogada!");
 }
 if (isset($_POST['novo_webhook'])) {
     verificar_csrf();
     $evento = sanitizar_texto($_POST['evento'] ?? '');
     $url    = sanitizar_texto($_POST['url_destino'] ?? '');
     if (!validar_url_webhook($url)) {
-        redirecionar('erp.php', 'Informe uma URL de webhook válida. Use HTTPS fora de localhost.', 'erro');
+        redirecionar('erp.php', 'Informe uma URL de webhook vÃ¡lida. Use HTTPS fora de localhost.', 'erro');
     }
     $stmt = $conn->prepare("INSERT INTO erp_webhooks (evento, url_destino) VALUES (?,?)");
     $stmt->bind_param("ss", $evento, $url); $stmt->execute(); $stmt->close();
-    redirecionar('erp.php', "✅ Webhook configurado!");
+    redirecionar('erp.php', "âœ… Webhook configurado!");
 }
 if (isset($_POST['remover_webhook'])) {
     verificar_csrf();
@@ -286,7 +272,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Integração ERP – FarmaVida</title>
+<title>IntegraÃ§Ã£o ERP â€“ FarmaVida</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="style.css?v=1774207549">
 <style>
@@ -304,7 +290,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 </head>
 <body>
 <div class="header"><div class="header-container">
-  <div class="logo" style="cursor:default;"><div class="logo-icon"><i class="fas fa-plug"></i></div>Integração ERP</div>
+  <div class="logo" style="cursor:default;"><div class="logo-icon"><i class="fas fa-plug"></i></div>IntegraÃ§Ã£o ERP</div>
   <div class="nav-buttons"><a href="painel_dono.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Painel</a></div>
 </div></div>
 
@@ -314,20 +300,20 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 
 <?php if($nova_key): ?>
 <div class="nova-key-banner">
-  <strong style="color:#065f46;display:block;margin-bottom:8px;"><i class="fas fa-key"></i> Sua nova API Key — copie agora, não será exibida novamente!</strong>
+  <strong style="color:#065f46;display:block;margin-bottom:8px;"><i class="fas fa-key"></i> Sua nova API Key â€” copie agora, nÃ£o serÃ¡ exibida novamente!</strong>
   <div class="key-val" onclick="navigator.clipboard.writeText('<?=htmlspecialchars($nova_key)?>');alert('Copiada!')"><?=htmlspecialchars($nova_key)?></div>
   <p style="font-size:12px;color:#065f46;margin-top:8px;"><i class="fas fa-info-circle"></i> Clique para copiar. Guarde em local seguro.</p>
 </div>
 <?php endif; ?>
 
 <div class="card" style="margin-bottom:20px;">
-  <h2><i class="fas fa-handshake"></i> Sistemas Compatíveis</h2>
+  <h2><i class="fas fa-handshake"></i> Sistemas CompatÃ­veis</h2>
   <p style="color:var(--gray);font-size:13px;">A API REST do FarmaVida conecta com qualquer sistema que suporte HTTP/JSON:</p>
   <div class="erp-compat">
-    <div class="compat-card">📊 Conta Azul</div><div class="compat-card">🔵 Bling ERP</div>
-    <div class="compat-card">🟡 Omie</div><div class="compat-card">🔶 Totvs</div>
-    <div class="compat-card">🟠 SAP B1</div><div class="compat-card">⚙️ Zapier</div>
-    <div class="compat-card">🔗 Make</div><div class="compat-card">📦 Qualquer REST</div>
+    <div class="compat-card">ðŸ“Š Conta Azul</div><div class="compat-card">ðŸ”µ Bling ERP</div>
+    <div class="compat-card">ðŸŸ¡ Omie</div><div class="compat-card">ðŸ”¶ Totvs</div>
+    <div class="compat-card">ðŸŸ  SAP B1</div><div class="compat-card">âš™ï¸ Zapier</div>
+    <div class="compat-card">ðŸ”— Make</div><div class="compat-card">ðŸ“¦ Qualquer REST</div>
   </div>
 </div>
 
@@ -338,7 +324,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
     <form method="POST" style="background:var(--bg);padding:18px;border-radius:var(--radius-md);margin-bottom:20px;">
       <?=campo_csrf()?>
       <div class="form-group"><label><i class="fas fa-tag"></i> Nome do sistema *</label><input type="text" name="nome_app" required placeholder="Ex: Conta Azul, Bling..."></div>
-      <div class="form-group"><label><i class="fas fa-shield-halved"></i> Permissões</label>
+      <div class="form-group"><label><i class="fas fa-shield-halved"></i> PermissÃµes</label>
         <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
           <?php foreach(['read'=>'Leitura','write'=>'Escrita','estoque'=>'Estoque','financeiro'=>'Financeiro'] as $v=>$l): ?>
             <label class="checkbox-label" style="font-size:13px;"><input type="checkbox" name="permissoes[]" value="<?=$v?>" checked> <?=$l?></label>
@@ -366,7 +352,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
           </div>
         </div>
         <div class="key-val" onclick="navigator.clipboard.writeText(this.textContent.trim());mostrarToast('Copiado!')" title="Clique para copiar">
-          <?=$k['ativa']?htmlspecialchars($k['api_key']):'••••••••••••••••••••••••'?>
+          <?=$k['ativa']?htmlspecialchars($k['api_key']):'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'?>
         </div>
         <div style="font-size:11px;color:var(--gray);margin-top:8px;display:flex;gap:16px;">
           <span><i class="fas fa-calendar"></i> <?=date('d/m/Y',strtotime($k['criado_em']))?></span>
@@ -379,7 +365,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 
   <div class="card">
     <h2><i class="fas fa-satellite-dish"></i> Webhooks</h2>
-    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">Receba notificações automáticas em sua URL quando eventos ocorrerem.</p>
+    <p style="color:var(--gray);font-size:13px;margin-bottom:16px;">Receba notificaÃ§Ãµes automÃ¡ticas em sua URL quando eventos ocorrerem.</p>
     <form method="POST" style="background:var(--bg);padding:18px;border-radius:var(--radius-md);margin-bottom:20px;">
       <?=campo_csrf()?>
       <div class="form-group"><label><i class="fas fa-bolt"></i> Evento *</label>
@@ -416,13 +402,13 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
 </div>
 
 <div class="card">
-  <h2><i class="fas fa-book-open"></i> Documentação da API REST</h2>
+  <h2><i class="fas fa-book-open"></i> DocumentaÃ§Ã£o da API REST</h2>
   <div class="alert alert-info" style="margin-bottom:20px;">
     <i class="fas fa-circle-info"></i>
     <div><strong>URL Base:</strong> <code style="background:#fff;padding:2px 8px;border-radius:6px;"><?=htmlspecialchars($base_url)?></code><br>
-    <strong>Autenticação:</strong> Header <code style="background:#fff;padding:2px 8px;border-radius:6px;">X-Api-Key: sua_api_key</code></div>
+    <strong>AutenticaÃ§Ã£o:</strong> Header <code style="background:#fff;padding:2px 8px;border-radius:6px;">X-Api-Key: sua_api_key</code></div>
   </div>
-  <?php foreach([['GET','produtos','Listar produtos com estoque'],['GET','pedidos','Listar pedidos (?status= &limit= &desde=)'],['GET','estoque','Posição de estoque com criticidade'],['GET','clientes','Base de clientes'],['GET','financeiro','Resumo financeiro (?ini= &fim=)'],['POST','produtos','Criar produto (nome, preco, categoria)'],['POST','estoque/entrada','Entrada de estoque (id_produto, quantidade)'],['PUT','pedidos/status','Atualizar status (id_pedido, status)']] as [$m,$ep,$desc]): ?>
+  <?php foreach([['GET','produtos','Listar produtos com estoque'],['GET','pedidos','Listar pedidos (?status= &limit= &desde=)'],['GET','estoque','PosiÃ§Ã£o de estoque com criticidade'],['GET','clientes','Base de clientes'],['GET','financeiro','Resumo financeiro (?ini= &fim=)'],['POST','produtos','Criar produto (nome, preco, categoria)'],['POST','estoque/entrada','Entrada de estoque (id_produto, quantidade)'],['PUT','pedidos/status','Atualizar status (id_pedido, status)']] as [$m,$ep,$desc]): ?>
     <div class="endpoint-card">
       <span class="method-badge method-<?=strtolower($m)?>"><?=$m?></span>
       <span class="endpoint-url">?api=1&endpoint=<?=$ep?></span>
@@ -430,7 +416,7 @@ $base_url = (isset($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off'?'https':'http')
     </div>
   <?php endforeach; ?>
   <div style="margin-top:20px;background:var(--bg);padding:16px;border-radius:var(--radius-md);">
-    <strong style="display:block;margin-bottom:10px;font-size:14px;"><i class="fas fa-code"></i> Exemplo – cURL</strong>
+    <strong style="display:block;margin-bottom:10px;font-size:14px;"><i class="fas fa-code"></i> Exemplo â€“ cURL</strong>
     <pre style="font-size:12px;color:#065f46;overflow-x:auto;white-space:pre-wrap;">curl -H "X-Api-Key: fv_sua_chave" "<?=htmlspecialchars($base_url)?>?api=1&endpoint=pedidos&status=pendente"</pre>
   </div>
 </div>
