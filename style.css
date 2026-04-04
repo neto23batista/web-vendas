@@ -1370,10 +1370,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
  
 .checkout-card {
-    background: var(--surface);
-    border: 1px solid var(--border2);
+    background: linear-gradient(160deg, rgba(17,27,44,.92), rgba(10,16,30,.95));
+    border: 1px solid rgba(255,255,255,.06);
+    box-shadow: 0 18px 40px rgba(0,0,0,.45);
     border-radius: var(--radius-xl);
-    padding: 18px;
+    padding: 20px;
 }
 
 .checkout-card h3 {
@@ -1394,10 +1395,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .checkout-line {
     display: flex;
     justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,.08);
     font-size: 13px;
-    color: var(--text2);
+    color: #c9d7ef;
 }
 
 .checkout-line:last-of-type {
@@ -1411,9 +1412,69 @@ input[type="number"]::-webkit-inner-spin-button {
     color: var(--primary);
     padding-top: 12px;
     margin-top: 10px;
-    border-top: 1px solid var(--border2);
+    border-top: 1px solid rgba(255,255,255,.08);
     display: flex;
     justify-content: space-between;
+}
+
+/* Overrides específicos do carrinho */
+.cart-layout {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 18px;
+}
+
+.cart-item {
+    background: linear-gradient(145deg, rgba(17,27,44,.9), rgba(12,19,33,.92));
+    border: 1px solid rgba(255,255,255,.05);
+    box-shadow: 0 10px 28px rgba(0,0,0,.35);
+    padding: 14px;
+}
+
+.cart-item .subtotal-value {
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.qty-controls {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+}
+
+.btn.btn-danger {
+    background: rgba(255,77,109,.12);
+    border: 1px solid rgba(255,77,109,.35);
+    color: #ff7a93;
+}
+
+.btn.btn-secondary {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    color: #d8e3ff;
+}
+
+.btn.btn-primary {
+    box-shadow: 0 10px 24px rgba(0,229,160,.25);
+}
+
+.cart-item-info .cart-item-nome {
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.checkout-card input[type="text"],
+.checkout-card textarea {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    color: var(--text);
+}
+
+.checkout-card .checkout-line span:last-child {
+    font-weight: 700;
+}
+
+.header, .container {
+    max-width: 1200px;
 }
 
  

@@ -92,10 +92,23 @@ $cat_icons = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmaVida — Sua Farmácia Premium</title>
+    <title>FarmaVida — Farmácia online com delivery e retirada</title>
+    <meta name="description" content="Compre medicamentos, genéricos e itens de bem-estar com delivery ou retirada em até 1h. Pagamento via PIX e acompanhamento do pedido.">
+    <link rel="canonical" href="https://<?= $_SERVER['HTTP_HOST'] ?? 'localhost' ?>/index.php">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type":"Question","name":"Preciso de receita para comprar?","acceptedAnswer":{"@type":"Answer","text":"Antibióticos e controlados exigem receita válida. Envie sua receita digital ou apresente no balcão."}},
+        {"@type":"Question","name":"Quais modalidades de entrega?","acceptedAnswer":{"@type":"Answer","text":"Retirada no balcão, retirada em até 1h, delivery padrão e delivery expresso."}},
+        {"@type":"Question","name":"Formas de pagamento?","acceptedAnswer":{"@type":"Answer","text":"PIX imediato, carteiras digitais e pagamento presencial no balcão ou na entrega."}}
+      ]
+    }
+    </script>
     <style>
          
 

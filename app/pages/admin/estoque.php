@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once FARMAVIDA_ROOT . '/app/core/bootstrap.php';
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/core/helpers.php';
@@ -201,9 +201,9 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 <div class="alert alert-warning" style="margin-bottom:24px;">
     <i class="fas fa-triangle-exclamation"></i>
     <div>
-        <strong>Estoque crÃ­tico: </strong>
-        <?php if($stats['zerados']>0): ?><strong><?= $stats['zerados'] ?></strong> produto(s) zerado(s) &nbsp;Â·&nbsp;<?php endif; ?>
-        <?php if($stats['baixos']>0): ?><strong><?= $stats['baixos'] ?></strong> abaixo do mÃ­nimo<?php endif; ?>
+        <strong>Estoque crítico: </strong>
+        <?php if($stats['zerados']>0): ?><strong><?= $stats['zerados'] ?></strong> produto(s) zerado(s) &nbsp;·&nbsp;<?php endif; ?>
+        <?php if($stats['baixos']>0): ?><strong><?= $stats['baixos'] ?></strong> abaixo do mínimo<?php endif; ?>
     </div>
     <a href="estoque.php?alerta=zerado" class="btn btn-warning" style="margin-left:auto;padding:6px 14px;font-size:12px;">Ver</a>
 </div>
@@ -238,7 +238,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
         </form>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button onclick="abrirModal('modal-entrada')" class="btn btn-success"><i class="fas fa-arrow-down"></i> Entrada</button>
-            <button onclick="abrirModal('modal-saida')"   class="btn btn-danger" ><i class="fas fa-arrow-up"></i> SaÃ­da</button>
+            <button onclick="abrirModal('modal-saida')"   class="btn btn-danger" ><i class="fas fa-arrow-up"></i> Saí­da</button>
             <button onclick="abrirModal('modal-ajuste')"  class="btn btn-info"   ><i class="fas fa-sliders"></i> Ajuste</button>
             <button onclick="abrirModal('modal-transf')"  class="btn btn-warning"><i class="fas fa-arrows-left-right"></i> Transf.</button>
         </div>
@@ -252,7 +252,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
     </div>
     <div style="overflow-x:auto;">
         <table class="est-table">
-            <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center;">Atual</th><th style="text-align:center;">MÃ­n.</th><th>Unid.</th><th>Local.</th><th>Status</th><th>Barra</th><th style="text-align:center;">AÃ§Ãµes</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center;">Atual</th><th style="text-align:center;">MÃ­n.</th><th>Unid.</th><th>Local.</th><th>Status</th><th>Barra</th><th style="text-align:center;">Ações</th></tr></thead>
             <tbody>
             <?php foreach($produtos as $p):
                 $s=(int)$p['estoque_atual'];$min=(int)$p['estoque_minimo'];$max=max(1,(int)$p['estoque_maximo']);
@@ -287,7 +287,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
 
 <div class="card" id="historico">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <h2 style="margin:0;"><i class="fas fa-clock-rotate-left"></i> HistÃ³rico</h2>
+        <h2 style="margin:0;"><i class="fas fa-clock-rotate-left"></i> Histórico</h2>
         <span style="font-size:12px;color:var(--text3);padding:4px 12px;background:var(--surface2);border-radius:var(--radius-full);border:1px solid var(--border);">
             <i class="fas fa-calendar-xmark"></i> Mantido por 30 dias
         </span>
@@ -295,7 +295,7 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
         <a href="estoque.php#historico"                            class="mov-tab <?= !$fmtipo?'active':'' ?>">Todos</a>
         <a href="estoque.php?mov_tipo=entrada#historico"           class="mov-tab <?= $fmtipo==='entrada'?'active':'' ?>">â†“ Entradas</a>
-        <a href="estoque.php?mov_tipo=saida#historico"             class="mov-tab <?= $fmtipo==='saida'?'active':'' ?>">â†‘ SaÃ­das</a>
+        <a href="estoque.php?mov_tipo=saida#historico"             class="mov-tab <?= $fmtipo==='saida'?'active':'' ?>">â†‘ Saí­das</a>
         <a href="estoque.php?mov_tipo=ajuste#historico"            class="mov-tab <?= $fmtipo==='ajuste'?'active':'' ?>">âš– Ajustes</a>
         <a href="estoque.php?mov_tipo=transferencia_out#historico" class="mov-tab <?= $fmtipo==='transferencia_out'?'active':'' ?>">â‡„ Transf.</a>
         <?php if($fmprod): ?>
@@ -305,14 +305,14 @@ $msg=$_SESSION['sucesso']??''; unset($_SESSION['sucesso']);
         <?php endif; ?>
     </div>
     <?php if(empty($movimentacoes)): ?>
-        <div class="empty" style="padding:40px;"><i class="fas fa-inbox"></i><h2>Nenhuma movimentaÃ§Ã£o</h2></div>
+        <div class="empty" style="padding:40px;"><i class="fas fa-inbox"></i><h2>Nenhuma movimentação</h2></div>
     <?php else: ?>
     <div style="overflow-x:auto;">
         <table class="est-table">
             <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th style="text-align:center;">Qtd</th><th style="text-align:center;">Antes</th><th style="text-align:center;">Depois</th><th>Motivo</th><th>UsuÃ¡rio</th><th>Pedido</th></tr></thead>
             <tbody>
             <?php
-            $tlabels=['entrada'=>'Entrada','saida'=>'SaÃ­da','ajuste'=>'Ajuste','transferencia_out'=>'Transf.','transferencia_in'=>'Chegada'];
+            $tlabels=['entrada'=>'Entrada','saida'=>'Saí­da','ajuste'=>'Ajuste','transferencia_out'=>'Transf.','transferencia_in'=>'Chegada'];
             foreach($movimentacoes as $m): ?>
             <tr>
                 <td style="white-space:nowrap;font-size:12px;"><?= date('d/m/Y H:i',strtotime($m['criado_em'])) ?></td>
@@ -351,12 +351,12 @@ foreach($produtos_sel as $ps) $sel_opts.='<option value="'.(int)$ps['id'].'" dat
 
 <div class="modal-overlay" id="modal-saida"><div class="modal-box">
     <button class="modal-close" onclick="fecharModal('modal-saida')"><i class="fas fa-xmark"></i></button>
-    <h3 style="color:var(--danger);font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrow-up"></i> Registrar SaÃ­da</h3>
+    <h3 style="color:var(--danger);font-family:'Bricolage Grotesque',sans-serif;"><i class="fas fa-arrow-up"></i> Registrar Saí­da</h3>
     <form method="POST"><?= campo_csrf() ?>
         <div class="form-group"><label>Produto *</label><select name="id_produto" id="sel-saida" required><option value="">Selecione...</option><?= $sel_opts ?></select></div>
         <div class="form-group"><label>Quantidade *</label><input type="number" name="quantidade" min="1" value="1" required></div>
         <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Ex: Vencimento, perda..."></div>
-        <button type="submit" name="acao_saida" class="btn btn-danger btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Confirmar SaÃ­da</button>
+        <button type="submit" name="acao_saida" class="btn btn-danger btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Confirmar Saí­da</button>
     </form>
 </div></div>
 
@@ -366,12 +366,12 @@ foreach($produtos_sel as $ps) $sel_opts.='<option value="'.(int)$ps['id'].'" dat
     <p id="ajuste-nome" style="color:var(--text3);font-size:13px;margin:-10px 0 16px;"></p>
     <form method="POST"><?= campo_csrf() ?><input type="hidden" name="id_produto" id="ajuste-id">
         <div style="display:flex;gap:6px;margin-bottom:18px;">
-            <button type="button" onclick="ajusteTab('inv')" id="tab-inv" class="btn btn-primary" style="padding:7px 14px;font-size:12px;">ðŸ“¦ InventÃ¡rio</button>
+            <button type="button" onclick="ajusteTab('inv')" id="tab-inv" class="btn btn-primary" style="padding:7px 14px;font-size:12px;">ðŸ“¦ Inventário</button>
             <button type="button" onclick="ajusteTab('cfg')" id="tab-cfg" class="btn btn-secondary" style="padding:7px 14px;font-size:12px;">âš™ï¸ Config</button>
         </div>
         <div id="tab-inv-body">
             <div class="form-group"><label>Novo Estoque *</label><input type="number" name="novo_estoque" id="ajuste-estoque" min="0" required></div>
-            <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Contagem fÃ­sica..."></div>
+            <div class="form-group"><label>Motivo</label><input type="text" name="motivo" placeholder="Contagem física..."></div>
             <button type="submit" name="acao_ajuste" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;"><i class="fas fa-check"></i> Salvar Ajuste</button>
         </div>
         <div id="tab-cfg-body" style="display:none;">

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once FARMAVIDA_ROOT . '/app/core/bootstrap.php';
 require_once FARMAVIDA_ROOT . '/app/core/config.php';
 require_once FARMAVIDA_ROOT . '/app/core/helpers.php';
@@ -167,7 +167,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                 <span class="auto-update-badge" style="margin-left:8px;"><i class="fas fa-clock"></i> 30s</span>
             </div>
             <div class="nav-buttons">
-                <a href="migracoes.php"           class="btn btn-secondary"><i class="fas fa-database"></i> Migracoes<?= $tem_migracoes_pendentes ? ' (' . count($migracoes_pendentes) . ')' : '' ?></a>
+                <a href="migracoes.php"           class="btn btn-secondary"><i class="fas fa-database"></i> Migrações<?= $tem_migracoes_pendentes ? ' (' . count($migracoes_pendentes) . ')' : '' ?></a>
                 <a href="relatorios.php"          class="btn btn-info"     ><i class="fas fa-chart-line"></i> Relatórios</a>
                 <a href="nfe.php"                 class="btn btn-secondary"><i class="fas fa-file-invoice"></i> NF-e</a>
                 <a href="erp.php"                 class="btn btn-secondary"><i class="fas fa-plug"></i> ERP</a>
@@ -210,7 +210,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
         <?php if ($tem_migracoes_pendentes): ?>
             <div class="alert alert-warning">
                 <i class="fas fa-database"></i>
-                Existem <?= count($migracoes_pendentes) ?> migracoes pendentes. Execute-as em <a href="migracoes.php" style="font-weight:700;">Migracoes</a> antes de abrir os modulos dependentes.
+                Existem <?= count($migracoes_pendentes) ?> Migrações pendentes. Execute-as em <a href="migracoes.php" style="font-weight:700;">Migrações</a> antes de abrir os módulos dependentes.
             </div>
         <?php endif; ?>
 
@@ -239,7 +239,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
             <div class="stat-card">
                 <i class="fas fa-pills"></i>
                 <div class="stat-numero" id="stat-produtos"><?= $total_produtos ?></div>
-                <div class="stat-label">Produtos Disponíveis</div>
+                <div class="stat-label">Produtos DisponÃ­veis</div>
             </div>
         </div>
 
@@ -271,11 +271,11 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                                         </span>
                                         <?php if (($pedido['forma_pagamento'] ?? '') === 'app'): ?>
                                             <?php
-                                            $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em análise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
+                                            $pg_cores = ['aprovado'=>['#059669','circle-check','Pago'],'em_analise'=>['#d97706','clock','Em anÃ¡lise'],'recusado'=>['#dc2626','circle-xmark','Recusado'],'cancelado'=>['#6b7280','ban','Cancelado'],'pendente'=>['#d97706','clock','Aguard. pag.']];
                                             $pg = $pg_cores[$pedido['pagamento_status'] ?? 'pendente'] ?? $pg_cores['pendente'];
                                             ?>
                                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:<?= $pg[0] ?>1a;color:<?= $pg[0] ?>;">
-                                                <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> · MP
+                                                <i class="fas fa-<?= $pg[1] ?>"></i> <?= $pg[2] ?> Â· MP
                                             </span>
                                         <?php endif; ?>
                                     </div>
@@ -324,10 +324,10 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                         <?php endif; ?>
                     <?php endfor; ?>
                     <?php if ($pagina < $total_paginas): ?>
-                        <a href="?pagina=<?= $pagina + 1 ?>">Próxima &#8594;</a>
+                        <a href="?pagina=<?= $pagina + 1 ?>">PrÃ³xima &#8594;</a>
                     <?php endif; ?>
                     <span style="color:var(--text2);padding:7px 0;">
-                        Página <?= $pagina ?> de <?= $total_paginas ?>
+                        PÃ¡gina <?= $pagina ?> de <?= $total_paginas ?>
                     </span>
                 </div>
                 <?php endif; ?>
@@ -507,7 +507,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
             const statusPagamento = String(pedido.pagamento_status ?? 'pendente');
             const map = {
                 aprovado: ['#059669', 'circle-check', 'Pago'],
-                em_analise: ['#d97706', 'clock', 'Em análise'],
+                em_analise: ['#d97706', 'clock', 'Em anÃ¡lise'],
                 recusado: ['#dc2626', 'circle-xmark', 'Recusado'],
                 cancelado: ['#6b7280', 'ban', 'Cancelado'],
                 pendente: ['#d97706', 'clock', 'Aguard. pag.'],
@@ -516,7 +516,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
 
             return `
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:${pg[0]}1a;color:${pg[0]};">
-                    <i class="fas fa-${pg[1]}"></i> ${pg[2]} · MP
+                    <i class="fas fa-${pg[1]}"></i> ${pg[2]} Â· MP
                 </span>
             `;
         }
@@ -596,10 +596,10 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
             }
 
             if (pagina < totalPaginas) {
-                html += `<a href="?pagina=${pagina + 1}">Próxima &#8594;</a>`;
+                html += `<a href="?pagina=${pagina + 1}">PrÃ³xima &#8594;</a>`;
             }
 
-            html += `<span style="color:var(--text2);padding:7px 0;">Página ${pagina} de ${totalPaginas}</span>`;
+            html += `<span style="color:var(--text2);padding:7px 0;">PÃ¡gina ${pagina} de ${totalPaginas}</span>`;
             html += '</div>';
             return html;
         }
@@ -687,7 +687,7 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
                             <div class="alert-estoque-inner" style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
                                 <i class="fas fa-triangle-exclamation" style="font-size:18px;color:var(--warning);flex-shrink:0;margin-top:2px;"></i>
                                 <div style="flex:1;min-width:160px;">
-                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crítico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mínimo</strong>
+                                    <strong style="color:var(--warning);display:block;margin-bottom:6px;font-size:13px;">Estoque crÃ­tico: ${data.zerados} zerado(s), ${data.baixos} abaixo do mÃ­nimo</strong>
                                     <div style="display:flex;gap:6px;flex-wrap:wrap;">${itensHtml}</div>
                                 </div>
                                 <a href="estoque.php" class="btn btn-warning" style="font-size:12px;padding:0 14px;min-height:38px;flex-shrink:0;">
@@ -707,4 +707,5 @@ function renderizar_status_form_admin(int $pedido_id, string $status, bool $is_d
     </script>
 </body>
 </html>
+
 

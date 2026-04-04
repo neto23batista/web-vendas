@@ -107,11 +107,16 @@ $preferencia = [
         'excluded_payment_types' => [],
         'installments'           => 12,
         'default_installments'   => 1,
+        'default_payment_method_id' => 'pix',
     ],
+    'binary_mode' => true,
     'metadata' => [
         'pedido_id'  => $id_pedido,
         'cliente_id' => $id_cliente,
         'sistema'    => 'farmavida',
+        'tipo_retirada' => $pedido['tipo_retirada'] ?? '',
+        'janela_inicio' => $pedido['janela_inicio'] ?? '',
+        'janela_fim'    => $pedido['janela_fim'] ?? '',
     ],
 ];
 
